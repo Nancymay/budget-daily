@@ -32,6 +32,7 @@ body {
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
+  padding-bottom: 24px;
   display: grid;
   gap: 16px;
 }
@@ -151,7 +152,7 @@ h1 {
 table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 520px;
+  min-width: 0;
   table-layout: fixed;
 }
 
@@ -159,13 +160,15 @@ th,
 td {
   border-bottom: 1px solid var(--line);
   text-align: left;
-  padding: 9px 8px;
+  padding: 8px 6px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 th:first-child,
 td:first-child {
-  width: 58px;
+  width: 48px;
 }
 
 th:nth-child(2),
@@ -174,7 +177,7 @@ th:nth-child(3),
 td:nth-child(3),
 th:nth-child(4),
 td:nth-child(4) {
-  width: 98px;
+  width: 86px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -400,6 +403,7 @@ th {
 @media (max-width: 768px) {
   .app {
     padding: 12px;
+    padding-bottom: 24px;
   }
 
   .tx-card {
@@ -416,5 +420,27 @@ th {
 
   .summary-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 430px) {
+  th,
+  td {
+    padding: 7px 4px;
+    font-size: 12px;
+  }
+
+  th:first-child,
+  td:first-child {
+    width: 42px;
+  }
+
+  th:nth-child(2),
+  td:nth-child(2),
+  th:nth-child(3),
+  td:nth-child(3),
+  th:nth-child(4),
+  td:nth-child(4) {
+    width: 78px;
   }
 }
