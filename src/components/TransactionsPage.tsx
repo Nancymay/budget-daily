@@ -1,27 +1,17 @@
 import { useMemo, useState } from "react";
 import { formatMoney } from "../lib/money";
-import { isDateInMonth, toHumanDate } from "../lib/date";
+import { toHumanDate } from "../lib/date";
 import type { Transaction, TransactionType } from "../types/models";
 
 interface TransactionsPageProps {
-  month: string;
   transactions: Transaction[];
   categories: Record<TransactionType, string[]>;
   onAdd: () => void;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
-  onDeleteCategory: (category: string) => void;
 }
 
-export function TransactionsPage({
-  month,
-  transactions,
-  categories,
-  onAdd,
-  onEdit,
-  onDelete,
-  onDeleteCategory
-}: TransactionsPageProps) {
+export function TransactionsPage({ transactions, categories, onAdd, onEdit, onDelete }: TransactionsPageProps) {
   const [typeFilter, setTypeFilter] = useState<"all" | TransactionType>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
@@ -39,71 +29,39 @@ export function TransactionsPage({
       .sort((a, b) => (a.date < b.date ? 1 : -1));
   }, [transactions, typeFilter, categoryFilter]);
 
-  const categorySpend = useMemo(() => {
-    return categories.expense
-      .map((category) => {
-        const total = transactions.reduce((acc, tx) => {
-          if (tx.type !== "expense" || tx.category !== category || !isDateInMonth(tx.date, month)) {
-            return acc;
-          }
-          return acc + tx.amount;
-        }, 0);
-        return { category, total };
-      })
-      .sort((a, b) => b.total - a.total);
-  }, [categories.expense, transactions, month]);
-
   return (
     <section className="panel">
-      <div className="transactions-top">
-        <div className="toolbar">
-          <label className="field compact">
-            <span>Тип</span>
-            <select
-              value={typeFilter}
-              onChange={(event) => {
-                setTypeFilter(event.target.value as "all" | TransactionType);
-                setCategoryFilter("all");
-              }}
-            >
-              <option value="all">Все</option>
-              <option value="income">Income</option>
-              <option value="expense">Expense</option>
-            </select>
-          </label>
+      <div className="toolbar">
+        <label className="field compact">
+          <span>Тип</span>
+          <select
+            value={typeFilter}
+            onChange={(event) => {
+              setTypeFilter(event.target.value as "all" | TransactionType);
+              setCategoryFilter("all");
+            }}
+          >
+            <option value="all">Все</option>
+            <option value="income">Income</option>
+            <option value="expense">Expense</option>
+          </select>
+        </label>
 
-          <label className="field compact">
-            <span>Категория</span>
-            <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
-              <option value="all">Все</option>
-              {availableCategories.map((category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <button type="button" className="btn" onClick={onAdd}>
-            + Добавить
-          </button>
-        </div>
-
-        <div className="categories-box">
-          <p className="categories-title">Категории (расходы за месяц)</p>
-          <div className="categories-list">
-            {categorySpend.map(({ category, total }) => (
-              <div key={category} className="category-pill">
-                <span>{category}</span>
-                <strong>{formatMoney(total)}</strong>
-                <button type="button" className="pill-delete" onClick={() => onDeleteCategory(category)} aria-label={`Удалить ${category}`}>
-                  ×
-                </button>
-              </div>
+        <label className="field compact">
+          <span>Категория</span>
+          <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+            <option value="all">Все</option>
+            {availableCategories.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
             ))}
-            {categorySpend.length === 0 && <p className="empty">Категорий пока нет.</p>}
-          </div>
-        </div>
+          </select>
+        </label>
+
+        <button type="button" className="btn" onClick={onAdd}>
+          + Добавить
+        </button>
       </div>
 
       <div className="transactions-list">

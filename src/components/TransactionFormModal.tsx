@@ -14,20 +14,30 @@ interface FormState {
   type: TransactionType;
   date: string;
   amount: string;
-  category: string;
+  selectedCategory: string;
+  newCategory: string;
   note: string;
   spreadEnabled: boolean;
   spreadStartDate: string;
   spreadEndDate: string;
 }
 
-function getInitialState(month: string, initial: Transaction | null): FormState {
+function getInitialState(
+  month: string,
+  initial: Transaction | null,
+  categories: Record<TransactionType, string[]>
+): FormState {
+  const type = initial?.type ?? "expense";
+  const options = categories[type];
+  const hasInitialCategory = Boolean(initial?.category && options.includes(initial.category));
+
   if (initial) {
     return {
-      type: initial.type,
+      type,
       date: initial.date,
       amount: String(initial.amount),
-      category: initial.category,
+      selectedCategory: hasInitialCategory ? initial.category : "__new__",
+      newCategory: hasInitialCategory ? "" : initial.category,
       note: initial.note ?? "",
       spreadEnabled: Boolean(initial.spread?.enabled),
       spreadStartDate: initial.spread?.startDate ?? initial.date,
@@ -36,10 +46,11 @@ function getInitialState(month: string, initial: Transaction | null): FormState 
   }
 
   return {
-    type: "expense",
+    type,
     date: `${month}-01`,
     amount: "",
-    category: "",
+    selectedCategory: options[0] ?? "__new__",
+    newCategory: "",
     note: "",
     spreadEnabled: false,
     spreadStartDate: `${month}-01`,
@@ -48,15 +59,15 @@ function getInitialState(month: string, initial: Transaction | null): FormState 
 }
 
 export function TransactionFormModal({ open, month, categories, initial, onClose, onSubmit }: TransactionFormModalProps) {
-  const [form, setForm] = useState<FormState>(getInitialState(month, initial));
+  const [form, setForm] = useState<FormState>(getInitialState(month, initial, categories));
   const [error, setError] = useState<string>("");
 
   useEffect(() => {
     if (open) {
-      setForm(getInitialState(month, initial));
+      setForm(getInitialState(month, initial, categories));
       setError("");
     }
-  }, [open, month, initial]);
+  }, [open, month, initial, categories]);
 
   const options = useMemo(() => categories[form.type], [categories, form.type]);
 
@@ -76,7 +87,8 @@ export function TransactionFormModal({ open, month, categories, initial, onClose
       return;
     }
 
-    if (!form.category.trim()) {
+    const category = form.selectedCategory === "__new__" ? form.newCategory.trim() : form.selectedCategory;
+    if (!category) {
       setError("Укажите категорию");
       return;
     }
@@ -91,7 +103,7 @@ export function TransactionFormModal({ open, month, categories, initial, onClose
         type: form.type,
         date: form.date,
         amount,
-        category: form.category.trim(),
+        category,
         note: form.note.trim(),
         spread:
           form.type === "income" && form.spreadEnabled
@@ -113,13 +125,24 @@ export function TransactionFormModal({ open, month, categories, initial, onClose
 
         <label className="field">
           <span>Тип</span>
-          <select value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value as TransactionType })}>
+          <select
+            value={form.type}
+            onChange={(event) => {
+              const nextType = event.target.value as TransactionType;
+              const nextOptions = categories[nextType];
+              setForm({
+                ...form,
+                type: nextType,
+                selectedCategory: nextOptions[0] ?? "__new__"
+              });
+            }}
+          >
             <option value="income">Income</option>
             <option value="expense">Expense</option>
           </select>
         </label>
 
-        <label className="field">
+        <label className="field modal-date-field">
           <span>Дата</span>
           <input type="date" value={form.date} onChange={(event) => setForm({ ...form, date: event.target.value })} />
         </label>
@@ -137,17 +160,22 @@ export function TransactionFormModal({ open, month, categories, initial, onClose
 
         <label className="field">
           <span>Категория</span>
-          <input
-            list="category-options"
-            value={form.category}
-            onChange={(event) => setForm({ ...form, category: event.target.value })}
-          />
-          <datalist id="category-options">
+          <select value={form.selectedCategory} onChange={(event) => setForm({ ...form, selectedCategory: event.target.value })}>
+            <option value="__new__">+ Новая категория</option>
             {options.map((cat) => (
-              <option key={cat} value={cat} />
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
             ))}
-          </datalist>
+          </select>
         </label>
+
+        {form.selectedCategory === "__new__" && (
+          <label className="field">
+            <span>Новая категория</span>
+            <input value={form.newCategory} onChange={(event) => setForm({ ...form, newCategory: event.target.value })} />
+          </label>
+        )}
 
         <label className="field">
           <span>Комментарий</span>

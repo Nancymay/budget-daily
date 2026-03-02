@@ -3,13 +3,14 @@ import { HeaderPanel } from "./components/HeaderPanel";
 import { DailyTable } from "./components/DailyTable";
 import { TransactionFormModal } from "./components/TransactionFormModal";
 import { TransactionsPage } from "./components/TransactionsPage";
+import { CategoriesPage } from "./components/CategoriesPage";
 import { buildForecast } from "./lib/finance";
 import { getBaseCategories, loadState, saveState } from "./lib/storage";
 import type { AppState, Transaction, TransactionType } from "./types/models";
 
 const baseCategories = getBaseCategories();
 
-type ActiveView = "forecast" | "transactions";
+type ActiveView = "forecast" | "transactions" | "categories";
 
 function createId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -129,7 +130,7 @@ export default function App() {
     }));
   };
 
-  const deleteCategory = (category: string) => {
+  const deleteCategory = (type: TransactionType, category: string) => {
     const confirmDelete = window.confirm(`Удалить категорию "${category}" из списка?`);
     if (!confirmDelete) {
       return;
@@ -140,8 +141,14 @@ export default function App() {
       settings: {
         ...prev.settings,
         customCategories: {
-          income: prev.settings.customCategories.income.filter((item) => item !== category),
-          expense: prev.settings.customCategories.expense.filter((item) => item !== category)
+          income:
+            type === "income"
+              ? prev.settings.customCategories.income.filter((item) => item !== category)
+              : prev.settings.customCategories.income,
+          expense:
+            type === "expense"
+              ? prev.settings.customCategories.expense.filter((item) => item !== category)
+              : prev.settings.customCategories.expense
         }
       }
     }));
@@ -166,13 +173,15 @@ export default function App() {
         <button className={`tab ${view === "transactions" ? "active" : ""}`} onClick={() => setView("transactions")}>
           Транзакции
         </button>
+        <button className={`tab ${view === "categories" ? "active" : ""}`} onClick={() => setView("categories")}>
+          Категории
+        </button>
       </div>
 
       {view === "forecast" ? (
         <DailyTable rows={forecast.rows} referenceDate={forecast.referenceDate} />
-      ) : (
+      ) : view === "transactions" ? (
         <TransactionsPage
-          month={month}
           transactions={state.transactions}
           categories={mergedCategories}
           onAdd={() => {
@@ -184,6 +193,12 @@ export default function App() {
             setModalOpen(true);
           }}
           onDelete={deleteTransaction}
+        />
+      ) : (
+        <CategoriesPage
+          month={month}
+          categories={mergedCategories}
+          transactions={state.transactions}
           onDeleteCategory={deleteCategory}
         />
       )}
