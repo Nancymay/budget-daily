@@ -16,10 +16,8 @@ export function DailyTable({ rows, referenceDate }: DailyTableProps) {
             <th>Дата</th>
             <th>Доход</th>
             <th>Расход</th>
-            <th>Остаток на начало</th>
-            <th>Остаток на конец</th>
+            <th>Остаток</th>
             <th>Дневной лимит</th>
-            <th>Проекция остатка</th>
           </tr>
         </thead>
         <tbody>
@@ -30,12 +28,8 @@ export function DailyTable({ rows, referenceDate }: DailyTableProps) {
                 <td>{toHumanDate(row.date)}</td>
                 <td>{formatMoney(row.income)}</td>
                 <td>{formatMoney(row.expense)}</td>
-                <td className={row.balanceStart < 0 ? "negative" : ""}>{formatMoney(row.balanceStart)}</td>
                 <td className={row.balanceEnd < 0 ? "negative" : ""}>{formatMoney(row.balanceEnd)}</td>
                 <td>{row.dailyLimit !== null ? formatMoney(row.dailyLimit) : "—"}</td>
-                <td className={row.projectedEnd !== null && row.projectedEnd < 0 ? "negative" : ""}>
-                  {row.projectedEnd !== null ? formatMoney(row.projectedEnd) : "—"}
-                </td>
               </tr>
             );
           })}

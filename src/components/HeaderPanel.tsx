@@ -23,7 +23,7 @@ export function HeaderPanel({
   return (
     <header className="panel">
       <div className="panel-grid">
-        <label className="field">
+        <label className="field month-field">
           <span>Месяц</span>
           <input type="month" value={month} onChange={(event) => onMonthChange(event.target.value)} />
         </label>
