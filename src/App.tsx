@@ -155,6 +155,31 @@ export default function App() {
     }));
   };
 
+  const addCategory = (type: TransactionType, category: string): boolean => {
+    const clean = category.trim();
+    if (!clean) {
+      return false;
+    }
+
+    const exists = mergedCategories[type].some((item) => item.toLowerCase() === clean.toLowerCase());
+    if (exists) {
+      return false;
+    }
+
+    setState((prev) => ({
+      ...prev,
+      settings: {
+        ...prev.settings,
+        customCategories: {
+          ...prev.settings.customCategories,
+          [type]: [...prev.settings.customCategories[type], clean]
+        }
+      }
+    }));
+
+    return true;
+  };
+
   return (
     <div className="app">
       <h1>Budget Daily</h1>
@@ -203,6 +228,7 @@ export default function App() {
           month={month}
           categories={mergedCategories}
           transactions={state.transactions}
+          onAddCategory={addCategory}
           onDeleteCategory={deleteCategory}
         />
       ) : (

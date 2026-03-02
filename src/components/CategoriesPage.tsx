@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { isDateInMonth } from "../lib/date";
 import { formatMoney } from "../lib/money";
 import type { Transaction, TransactionType } from "../types/models";
@@ -7,10 +7,14 @@ interface CategoriesPageProps {
   month: string;
   categories: Record<TransactionType, string[]>;
   transactions: Transaction[];
+  onAddCategory: (type: TransactionType, category: string) => boolean;
   onDeleteCategory: (type: TransactionType, category: string) => void;
 }
 
-export function CategoriesPage({ month, categories, transactions, onDeleteCategory }: CategoriesPageProps) {
+export function CategoriesPage({ month, categories, transactions, onAddCategory, onDeleteCategory }: CategoriesPageProps) {
+  const [type, setType] = useState<TransactionType>("expense");
+  const [name, setName] = useState("");
+
   const rows = useMemo(() => {
     const list: Array<{ type: TransactionType; category: string; total: number }> = [];
 
@@ -30,8 +34,32 @@ export function CategoriesPage({ month, categories, transactions, onDeleteCatego
     return list.sort((a, b) => b.total - a.total || a.category.localeCompare(b.category));
   }, [categories, transactions, month]);
 
+  const add = () => {
+    const ok = onAddCategory(type, name);
+    if (ok) {
+      setName("");
+    }
+  };
+
   return (
     <section className="panel">
+      <div className="toolbar">
+        <label className="field compact">
+          <span>Тип</span>
+          <select value={type} onChange={(event) => setType(event.target.value as TransactionType)}>
+            <option value="income">Доходы</option>
+            <option value="expense">Расходы</option>
+          </select>
+        </label>
+        <label className="field">
+          <span>Новая категория</span>
+          <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Например: Кафе" />
+        </label>
+        <button type="button" className="btn" onClick={add}>
+          + Добавить категорию
+        </button>
+      </div>
+
       <h3 className="categories-title">Категории за выбранный месяц</h3>
       <div className="categories-list-vertical">
         {rows.map((row) => (
