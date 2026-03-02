@@ -119,22 +119,21 @@ export function TransactionFormModal({ open, month, categories, initial, onClose
           </select>
         </label>
 
-        <div className="row-2">
-          <label className="field">
-            <span>Дата</span>
-            <input type="date" value={form.date} onChange={(event) => setForm({ ...form, date: event.target.value })} />
-          </label>
-          <label className="field">
-            <span>Сумма</span>
-            <input
-              type="number"
-              step="0.01"
-              min="0.01"
-              value={form.amount}
-              onChange={(event) => setForm({ ...form, amount: event.target.value })}
-            />
-          </label>
-        </div>
+        <label className="field">
+          <span>Дата</span>
+          <input type="date" value={form.date} onChange={(event) => setForm({ ...form, date: event.target.value })} />
+        </label>
+
+        <label className="field">
+          <span>Сумма</span>
+          <input
+            type="number"
+            step="0.01"
+            min="0.01"
+            value={form.amount}
+            onChange={(event) => setForm({ ...form, amount: event.target.value })}
+          />
+        </label>
 
         <label className="field">
           <span>Категория</span>

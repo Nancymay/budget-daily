@@ -129,6 +129,24 @@ export default function App() {
     }));
   };
 
+  const deleteCategory = (category: string) => {
+    const confirmDelete = window.confirm(`Удалить категорию "${category}" из списка?`);
+    if (!confirmDelete) {
+      return;
+    }
+
+    setState((prev) => ({
+      ...prev,
+      settings: {
+        ...prev.settings,
+        customCategories: {
+          income: prev.settings.customCategories.income.filter((item) => item !== category),
+          expense: prev.settings.customCategories.expense.filter((item) => item !== category)
+        }
+      }
+    }));
+  };
+
   return (
     <div className="app">
       <h1>Budget Daily</h1>
@@ -154,6 +172,7 @@ export default function App() {
         <DailyTable rows={forecast.rows} referenceDate={forecast.referenceDate} />
       ) : (
         <TransactionsPage
+          month={month}
           transactions={state.transactions}
           categories={mergedCategories}
           onAdd={() => {
@@ -165,6 +184,7 @@ export default function App() {
             setModalOpen(true);
           }}
           onDelete={deleteTransaction}
+          onDeleteCategory={deleteCategory}
         />
       )}
 
