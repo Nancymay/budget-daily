@@ -8,6 +8,15 @@ interface SummaryPageProps {
   transactions: Transaction[];
 }
 
+function colorByCategory(category: string): string {
+  let hash = 0;
+  for (let i = 0; i < category.length; i += 1) {
+    hash = (hash * 31 + category.charCodeAt(i)) >>> 0;
+  }
+  const hue = hash % 360;
+  return `hsl(${hue}deg 90% 58%)`;
+}
+
 export function SummaryPage({ month, transactions }: SummaryPageProps) {
   const slices = useMemo(() => {
     const byCategory = new Map<string, number>();
@@ -24,13 +33,11 @@ export function SummaryPage({ month, transactions }: SummaryPageProps) {
       .sort((a, b) => b.amount - a.amount);
 
     const total = list.reduce((acc, item) => acc + item.amount, 0);
-    const palette = ["#ffffff", "#d9d9d9", "#b8b8b8", "#969696", "#777777", "#5d5d5d"];
-
     return {
       total,
       list: list.map((item, index) => ({
         ...item,
-        color: palette[index % palette.length],
+        color: colorByCategory(`${item.category}:${index}`),
         percent: total > 0 ? (item.amount / total) * 100 : 0
       }))
     };
