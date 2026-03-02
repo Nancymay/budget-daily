@@ -53,3 +53,8 @@ export function toHumanDate(date: string): string {
   const [year, month, day] = date.split("-");
   return `${day}.${month}.${year}`;
 }
+
+export function toHumanDayMonth(date: string): string {
+  const [, month, day] = date.split("-");
+  return `${day}.${month}`;
+}

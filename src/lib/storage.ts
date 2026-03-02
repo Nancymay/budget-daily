@@ -4,8 +4,8 @@ import type { AppState, Transaction, TransactionType } from "../types/models";
 const STORAGE_KEY = "budget-daily.v1";
 
 const BASE_CATEGORIES: Record<TransactionType, string[]> = {
-  income: ["Salary", "Freelance", "Gift", "Cashback", "Other"],
-  expense: ["Food", "Rent", "Transport", "Health", "Fun", "Other"]
+  income: [],
+  expense: []
 };
 
 function isTransactionType(value: unknown): value is TransactionType {
@@ -62,7 +62,7 @@ export function getDefaultState(): AppState {
       month,
       startBalanceByMonth: { [month]: 0 },
       distribution: {
-        enabled: false,
+        enabled: true,
         mode: "fromToday"
       },
       customCategories: {

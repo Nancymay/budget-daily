@@ -1,13 +1,11 @@
 import { formatMoney } from "../lib/money";
-import type { DistributionSettings, ForecastResult } from "../types/models";
+import type { ForecastResult } from "../types/models";
 
 interface HeaderPanelProps {
   month: string;
   onMonthChange: (month: string) => void;
   startBalance: number;
   onStartBalanceChange: (value: number) => void;
-  distribution: DistributionSettings;
-  onDistributionChange: (next: DistributionSettings) => void;
   forecast: ForecastResult;
 }
 
@@ -16,8 +14,6 @@ export function HeaderPanel({
   onMonthChange,
   startBalance,
   onStartBalanceChange,
-  distribution,
-  onDistributionChange,
   forecast
 }: HeaderPanelProps) {
   return (
@@ -28,7 +24,7 @@ export function HeaderPanel({
           <input type="month" value={month} onChange={(event) => onMonthChange(event.target.value)} />
         </label>
 
-        <label className="field">
+        <label className="field start-balance-field">
           <span>Стартовый баланс</span>
           <input
             type="number"
@@ -37,43 +33,6 @@ export function HeaderPanel({
             onChange={(event) => onStartBalanceChange(Number(event.target.value || 0))}
           />
         </label>
-
-        <label className="switch-field">
-          <span>Распределять по дням</span>
-          <input
-            type="checkbox"
-            checked={distribution.enabled}
-            onChange={(event) => onDistributionChange({ ...distribution, enabled: event.target.checked })}
-          />
-        </label>
-
-        <label className="field">
-          <span>Точка отсчёта</span>
-          <select
-            value={distribution.mode}
-            onChange={(event) =>
-              onDistributionChange({
-                ...distribution,
-                mode: event.target.value as DistributionSettings["mode"]
-              })
-            }
-          >
-            <option value="fromStart">С 1 числа</option>
-            <option value="fromToday">С сегодняшнего дня</option>
-            <option value="fromDate">С выбранной даты</option>
-          </select>
-        </label>
-
-        {distribution.mode === "fromDate" && (
-          <label className="field">
-            <span>Дата отсчёта</span>
-            <input
-              type="date"
-              value={distribution.fromDate ?? `${month}-01`}
-              onChange={(event) => onDistributionChange({ ...distribution, fromDate: event.target.value })}
-            />
-          </label>
-        )}
       </div>
 
       <div className="totals-row">

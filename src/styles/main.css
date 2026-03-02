@@ -71,8 +71,19 @@ h1 {
   color: var(--text);
 }
 
+.field input[type="date"],
+.field input[type="month"] {
+  min-width: 0;
+}
+
 .month-field {
-  max-width: 170px;
+  max-width: 126px;
+  justify-self: start;
+}
+
+.start-balance-field {
+  max-width: 190px;
+  justify-self: start;
 }
 
 .switch-field {
@@ -137,15 +148,21 @@ h1 {
 table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 680px;
+  min-width: 0;
+  table-layout: fixed;
 }
 
 th,
 td {
   border-bottom: 1px solid var(--line);
   text-align: left;
-  padding: 10px;
+  padding: 9px 8px;
   white-space: nowrap;
+}
+
+th:first-child,
+td:first-child {
+  width: 58px;
 }
 
 th {
@@ -247,6 +264,10 @@ th {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+
+.row-2 .field {
+  min-width: 0;
 }
 
 .spread-box {

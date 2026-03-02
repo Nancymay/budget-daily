@@ -45,7 +45,10 @@ export default function App() {
         month,
         startBalance,
         transactions: state.transactions,
-        distribution: state.settings.distribution
+        distribution: {
+          ...state.settings.distribution,
+          enabled: true
+        }
       }),
     [month, startBalance, state.transactions, state.settings.distribution]
   );
@@ -135,16 +138,6 @@ export default function App() {
         onMonthChange={setMonth}
         startBalance={startBalance}
         onStartBalanceChange={setStartBalance}
-        distribution={state.settings.distribution}
-        onDistributionChange={(distribution) =>
-          setState((prev) => ({
-            ...prev,
-            settings: {
-              ...prev.settings,
-              distribution
-            }
-          }))
-        }
         forecast={forecast}
       />
 
