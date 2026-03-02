@@ -11,14 +11,14 @@ export function parseMonthStart(month: string): Date {
 }
 
 export function getDaysInMonth(month: string): string[] {
-  const start = parseMonthStart(month);
-  if (Number.isNaN(start.getTime())) {
+  const [yearRaw, monthRaw] = month.split("-");
+  const year = Number(yearRaw);
+  const monthNumber = Number(monthRaw);
+  if (!Number.isInteger(year) || !Number.isInteger(monthNumber) || monthNumber < 1 || monthNumber > 12) {
     return [];
   }
 
-  const year = start.getUTCFullYear();
-  const monthIndex = start.getUTCMonth();
-  const days = new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
+  const days = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
   const result: string[] = [];
 
   for (let day = 1; day <= days; day += 1) {

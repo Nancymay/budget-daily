@@ -4,13 +4,14 @@ import { DailyTable } from "./components/DailyTable";
 import { TransactionFormModal } from "./components/TransactionFormModal";
 import { TransactionsPage } from "./components/TransactionsPage";
 import { CategoriesPage } from "./components/CategoriesPage";
+import { SummaryPage } from "./components/SummaryPage";
 import { buildForecast } from "./lib/finance";
 import { getBaseCategories, loadState, saveState } from "./lib/storage";
 import type { AppState, Transaction, TransactionType } from "./types/models";
 
 const baseCategories = getBaseCategories();
 
-type ActiveView = "forecast" | "transactions" | "categories";
+type ActiveView = "forecast" | "transactions" | "categories" | "summary";
 
 function createId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -176,6 +177,9 @@ export default function App() {
         <button className={`tab ${view === "categories" ? "active" : ""}`} onClick={() => setView("categories")}>
           Категории
         </button>
+        <button className={`tab ${view === "summary" ? "active" : ""}`} onClick={() => setView("summary")}>
+          Итого
+        </button>
       </div>
 
       {view === "forecast" ? (
@@ -194,13 +198,15 @@ export default function App() {
           }}
           onDelete={deleteTransaction}
         />
-      ) : (
+      ) : view === "categories" ? (
         <CategoriesPage
           month={month}
           categories={mergedCategories}
           transactions={state.transactions}
           onDeleteCategory={deleteCategory}
         />
+      ) : (
+        <SummaryPage month={month} transactions={state.transactions} />
       )}
 
       <TransactionFormModal

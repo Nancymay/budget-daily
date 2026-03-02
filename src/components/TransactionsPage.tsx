@@ -42,8 +42,8 @@ export function TransactionsPage({ transactions, categories, onAdd, onEdit, onDe
             }}
           >
             <option value="all">Все</option>
-            <option value="income">Income</option>
-            <option value="expense">Expense</option>
+            <option value="income">Доходы</option>
+            <option value="expense">Расходы</option>
           </select>
         </label>
 
@@ -69,7 +69,9 @@ export function TransactionsPage({ transactions, categories, onAdd, onEdit, onDe
           <article key={tx.id} className="tx-card">
             <div>
               <p className="tx-meta">
-                <span className={tx.type === "income" ? "positive" : "negative"}>{tx.type}</span>
+                <span className={tx.type === "income" ? "positive" : "negative"}>
+                  {tx.type === "income" ? "Доходы" : "Расходы"}
+                </span>
                 <span>{toHumanDate(tx.date)}</span>
                 <span>{tx.category}</span>
               </p>

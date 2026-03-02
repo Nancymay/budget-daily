@@ -137,8 +137,8 @@ export function TransactionFormModal({ open, month, categories, initial, onClose
               });
             }}
           >
-            <option value="income">Income</option>
-            <option value="expense">Expense</option>
+            <option value="income">Доходы</option>
+            <option value="expense">Расходы</option>
           </select>
         </label>
 

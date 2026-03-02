@@ -38,7 +38,9 @@ export function CategoriesPage({ month, categories, transactions, onDeleteCatego
           <article key={`${row.type}:${row.category}`} className="category-row">
             <div>
               <p className="tx-meta">
-                <span className={row.type === "income" ? "positive" : "negative"}>{row.type}</span>
+                <span className={row.type === "income" ? "positive" : "negative"}>
+                  {row.type === "income" ? "Доходы" : "Расходы"}
+                </span>
                 <span>{row.category}</span>
               </p>
               <strong>{formatMoney(row.total)}</strong>
