@@ -1,5 +1,5 @@
 import dayjs from "dayjs";
-import { Alert, Button, DatePicker, Form, Input, InputNumber, Modal, Select, Space, Switch } from "antd";
+import { Alert, Button, DatePicker, Form, Input, InputNumber, Modal, Select, Space } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import type { Transaction, TransactionType } from "../types/models";
 import type { Dayjs } from "dayjs";
@@ -20,9 +20,6 @@ interface FormState {
   selectedCategory: string;
   newCategory: string;
   note: string;
-  spreadEnabled: boolean;
-  spreadStartDate: string;
-  spreadEndDate: string;
 }
 
 function parseDateValue(input: string): Dayjs | null {
@@ -46,10 +43,7 @@ function getInitialState(
       amount: initial.amount,
       selectedCategory: hasInitialCategory ? initial.category : "__new__",
       newCategory: hasInitialCategory ? "" : initial.category,
-      note: initial.note ?? "",
-      spreadEnabled: Boolean(initial.spread?.enabled),
-      spreadStartDate: initial.spread?.startDate ?? initial.date,
-      spreadEndDate: initial.spread?.endDate ?? `${month}-01`
+      note: initial.note ?? ""
     };
   }
 
@@ -59,10 +53,7 @@ function getInitialState(
     amount: null,
     selectedCategory: options[0] ?? "__new__",
     newCategory: "",
-    note: "",
-    spreadEnabled: false,
-    spreadStartDate: `${month}-01`,
-    spreadEndDate: `${month}-01`
+    note: ""
   };
 }
 
@@ -97,11 +88,6 @@ export function TransactionFormModal({ open, month, categories, initial, onClose
       return;
     }
 
-    if (form.type === "income" && form.spreadEnabled && form.spreadStartDate > form.spreadEndDate) {
-      setError("Дата начала распределения не может быть позже даты окончания");
-      return;
-    }
-
     onSubmit(
       {
         type: form.type,
@@ -109,14 +95,7 @@ export function TransactionFormModal({ open, month, categories, initial, onClose
         amount,
         category,
         note: form.note.trim(),
-        spread:
-          form.type === "income" && form.spreadEnabled
-            ? {
-                enabled: true,
-                startDate: form.spreadStartDate,
-                endDate: form.spreadEndDate
-              }
-            : undefined
+        spread: undefined
       },
       initial?.id
     );
@@ -197,58 +176,8 @@ export function TransactionFormModal({ open, month, categories, initial, onClose
           <Input value={form.note} onChange={(event) => setForm({ ...form, note: event.target.value })} />
         </Form.Item>
 
-        {form.type === "income" && (
-          <CardSpread
-            spreadEnabled={form.spreadEnabled}
-            spreadStartDate={form.spreadStartDate}
-            spreadEndDate={form.spreadEndDate}
-            onToggle={(spreadEnabled) => setForm({ ...form, spreadEnabled })}
-            onChangeStart={(spreadStartDate) => setForm({ ...form, spreadStartDate })}
-            onChangeEnd={(spreadEndDate) => setForm({ ...form, spreadEndDate })}
-          />
-        )}
-
         {error && <Alert type="error" message={error} />}
       </Form>
     </Modal>
-  );
-}
-
-interface CardSpreadProps {
-  spreadEnabled: boolean;
-  spreadStartDate: string;
-  spreadEndDate: string;
-  onToggle: (enabled: boolean) => void;
-  onChangeStart: (date: string) => void;
-  onChangeEnd: (date: string) => void;
-}
-
-function CardSpread({ spreadEnabled, spreadStartDate, spreadEndDate, onToggle, onChangeStart, onChangeEnd }: CardSpreadProps) {
-  return (
-    <div className="spread-box-ant">
-      <div className="spread-head">
-        <span>Размазать приход по диапазону</span>
-        <Switch checked={spreadEnabled} onChange={onToggle} />
-      </div>
-
-      {spreadEnabled && (
-        <Space style={{ width: "100%" }} size={12} wrap>
-          <Form.Item label="От" style={{ minWidth: 170, flex: 1 }}>
-            <DatePicker
-              value={parseDateValue(spreadStartDate)}
-              onChange={(value) => onChangeStart(value ? value.format("YYYY-MM-DD") : spreadStartDate)}
-              style={{ width: "100%" }}
-            />
-          </Form.Item>
-          <Form.Item label="До" style={{ minWidth: 170, flex: 1 }}>
-            <DatePicker
-              value={parseDateValue(spreadEndDate)}
-              onChange={(value) => onChangeEnd(value ? value.format("YYYY-MM-DD") : spreadEndDate)}
-              style={{ width: "100%" }}
-            />
-          </Form.Item>
-        </Space>
-      )}
-    </div>
   );
 }

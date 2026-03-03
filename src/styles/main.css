@@ -52,11 +52,6 @@ body {
   padding: 12px;
 }
 
-.progress-wrap {
-  display: flex;
-  justify-content: center;
-}
-
 .summary-line {
   display: flex;
   justify-content: space-between;
@@ -66,17 +61,47 @@ body {
   border-radius: 10px;
 }
 
-.spread-box-ant {
-  border: 1px solid #f0f0f0;
-  border-radius: 10px;
-  padding: 10px;
+.pie-wrap-ant {
+  position: relative;
+  width: min(260px, 100%);
+  aspect-ratio: 1;
+  margin: 0 auto;
 }
 
-.spread-head {
+.pie-chart-ant {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 1px solid #f0f0f0;
+}
+
+.pie-center-ant {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  transform: translate(-50%, -50%);
+  width: 58%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid #f0f0f0;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
+  justify-content: center;
+  gap: 4px;
+  text-align: center;
+  padding: 8px;
+}
+
+.pie-center-ant span {
+  font-size: 12px;
+  color: #8c8c8c;
+}
+
+.pie-total-ant {
+  font-size: clamp(12px, 2.4vw, 18px);
+  line-height: 1.15;
+  word-break: break-word;
 }
 
 @media (max-width: 768px) {
@@ -87,5 +112,13 @@ body {
   .forecast-table .ant-table-cell {
     padding: 8px 5px !important;
     font-size: 12px;
+  }
+
+  .pie-wrap-ant {
+    width: min(220px, 88vw);
+  }
+
+  .pie-total-ant {
+    font-size: clamp(11px, 4vw, 15px);
   }
 }
