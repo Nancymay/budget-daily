@@ -2,6 +2,7 @@ import dayjs from "dayjs";
 import { Alert, Button, DatePicker, Form, Input, InputNumber, Modal, Select, Space, Switch } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import type { Transaction, TransactionType } from "../types/models";
+import type { Dayjs } from "dayjs";
 
 interface TransactionFormModalProps {
   open: boolean;
@@ -22,6 +23,11 @@ interface FormState {
   spreadEnabled: boolean;
   spreadStartDate: string;
   spreadEndDate: string;
+}
+
+function parseDateValue(input: string): Dayjs | null {
+  const value = dayjs(input);
+  return value.isValid() ? value : null;
 }
 
 function getInitialState(
@@ -154,8 +160,8 @@ export function TransactionFormModal({ open, month, categories, initial, onClose
         <Space style={{ width: "100%" }} size={12} wrap>
           <Form.Item label="Дата" style={{ minWidth: 170, flex: 1 }}>
             <DatePicker
-              value={dayjs(form.date)}
-              onChange={(value) => setForm({ ...form, date: value ? value.format("YYYY-MM-DD") : "" })}
+              value={parseDateValue(form.date)}
+              onChange={(value) => setForm({ ...form, date: value ? value.format("YYYY-MM-DD") : `${month}-01` })}
               style={{ width: "100%" }}
             />
           </Form.Item>
@@ -229,14 +235,14 @@ function CardSpread({ spreadEnabled, spreadStartDate, spreadEndDate, onToggle, o
         <Space style={{ width: "100%" }} size={12} wrap>
           <Form.Item label="От" style={{ minWidth: 170, flex: 1 }}>
             <DatePicker
-              value={dayjs(spreadStartDate)}
+              value={parseDateValue(spreadStartDate)}
               onChange={(value) => onChangeStart(value ? value.format("YYYY-MM-DD") : spreadStartDate)}
               style={{ width: "100%" }}
             />
           </Form.Item>
           <Form.Item label="До" style={{ minWidth: 170, flex: 1 }}>
             <DatePicker
-              value={dayjs(spreadEndDate)}
+              value={parseDateValue(spreadEndDate)}
               onChange={(value) => onChangeEnd(value ? value.format("YYYY-MM-DD") : spreadEndDate)}
               style={{ width: "100%" }}
             />
