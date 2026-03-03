@@ -1,3 +1,5 @@
+import dayjs from "dayjs";
+import { Card, Col, DatePicker, InputNumber, Row, Statistic } from "antd";
 import { formatMoney } from "../lib/money";
 import type { ForecastResult } from "../types/models";
 
@@ -17,42 +19,53 @@ export function HeaderPanel({
   forecast
 }: HeaderPanelProps) {
   return (
-    <header className="panel">
-      <div className="panel-grid">
-        <label className="field month-field">
-          <span>Месяц</span>
-          <input type="month" value={month} onChange={(event) => onMonthChange(event.target.value)} />
-        </label>
-
-        <label className="field start-balance-field">
-          <span>Стартовый баланс</span>
-          <input
-            type="number"
-            step="0.01"
-            value={startBalance}
-            onChange={(event) => onStartBalanceChange(Number(event.target.value || 0))}
+    <Card className="header-card">
+      <Row gutter={[12, 12]}>
+        <Col xs={24} sm={12} md={8} lg={6}>
+          <label className="field-label">Месяц</label>
+          <DatePicker
+            picker="month"
+            value={dayjs(`${month}-01`)}
+            onChange={(_, dateString) => {
+              if (typeof dateString === "string" && dateString) {
+                onMonthChange(dateString);
+              }
+            }}
+            style={{ width: "100%" }}
+            format="YYYY-MM"
           />
-        </label>
-      </div>
+        </Col>
+        <Col xs={24} sm={12} md={8} lg={6}>
+          <label className="field-label">Стартовый баланс</label>
+          <InputNumber
+            style={{ width: "100%" }}
+            value={startBalance === 0 ? null : startBalance}
+            onChange={(value) => onStartBalanceChange(Number(value ?? 0))}
+            min={0}
+            precision={2}
+            placeholder="0"
+          />
+        </Col>
+      </Row>
 
-      <div className="totals-row">
-        <div className="metric">
-          <span>Доходы</span>
-          <strong>{formatMoney(forecast.totalIncome)}</strong>
-        </div>
-        <div className="metric">
-          <span>Расходы</span>
-          <strong>{formatMoney(forecast.totalExpense)}</strong>
-        </div>
-        <div className="metric">
-          <span>Доступно за месяц</span>
-          <strong>{formatMoney(forecast.availableFunds)}</strong>
-        </div>
-        <div className="metric">
-          <span>Остаток на конец</span>
-          <strong className={forecast.endBalance < 0 ? "negative" : "positive"}>{formatMoney(forecast.endBalance)}</strong>
-        </div>
-      </div>
-    </header>
+      <Row gutter={[12, 12]} className="stats-row">
+        <Col xs={12} md={6}>
+          <Statistic title="Доходы" value={formatMoney(forecast.totalIncome)} />
+        </Col>
+        <Col xs={12} md={6}>
+          <Statistic title="Расходы" value={formatMoney(forecast.totalExpense)} />
+        </Col>
+        <Col xs={12} md={6}>
+          <Statistic title="Доступно" value={formatMoney(forecast.availableFunds)} />
+        </Col>
+        <Col xs={12} md={6}>
+          <Statistic
+            title="Остаток"
+            value={formatMoney(forecast.endBalance)}
+            valueStyle={{ color: forecast.endBalance < 0 ? "#ff4d4f" : "#1677ff" }}
+          />
+        </Col>
+      </Row>
+    </Card>
   );
 }

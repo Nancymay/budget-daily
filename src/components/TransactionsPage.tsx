@@ -1,3 +1,5 @@
+import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
+import { Button, Card, Col, Popconfirm, Row, Select, Space, Tag, Typography } from "antd";
 import { useMemo, useState } from "react";
 import { formatMoney } from "../lib/money";
 import { toHumanDate } from "../lib/date";
@@ -30,69 +32,75 @@ export function TransactionsPage({ transactions, categories, onAdd, onEdit, onDe
   }, [transactions, typeFilter, categoryFilter]);
 
   return (
-    <section className="panel">
-      <div className="toolbar">
-        <label className="field compact">
-          <span>Тип</span>
-          <select
+    <Card>
+      <Row gutter={[12, 12]} align="bottom" className="toolbar-row">
+        <Col xs={24} sm={8}>
+          <label className="field-label">Тип</label>
+          <Select
             value={typeFilter}
-            onChange={(event) => {
-              setTypeFilter(event.target.value as "all" | TransactionType);
+            onChange={(value) => {
+              setTypeFilter(value);
               setCategoryFilter("all");
             }}
-          >
-            <option value="all">Все</option>
-            <option value="income">Доходы</option>
-            <option value="expense">Расходы</option>
-          </select>
-        </label>
+            style={{ width: "100%" }}
+            options={[
+              { value: "all", label: "Все" },
+              { value: "income", label: "Доходы" },
+              { value: "expense", label: "Расходы" }
+            ]}
+          />
+        </Col>
+        <Col xs={24} sm={10}>
+          <label className="field-label">Категория</label>
+          <Select
+            value={categoryFilter}
+            onChange={(value) => setCategoryFilter(value)}
+            style={{ width: "100%" }}
+            options={[{ value: "all", label: "Все" }, ...availableCategories.map((item) => ({ value: item, label: item }))]}
+          />
+        </Col>
+        <Col xs={24} sm={6}>
+          <Button type="primary" icon={<PlusOutlined />} onClick={onAdd} block>
+            Добавить
+          </Button>
+        </Col>
+      </Row>
 
-        <label className="field compact">
-          <span>Категория</span>
-          <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
-            <option value="all">Все</option>
-            {availableCategories.map((category) => (
-              <option key={category} value={category}>
-                {category}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <button type="button" className="btn" onClick={onAdd}>
-          + Добавить
-        </button>
-      </div>
-
-      <div className="transactions-list">
+      <Space direction="vertical" style={{ width: "100%", marginTop: 16 }} size={10}>
         {filtered.map((tx) => (
-          <article key={tx.id} className="tx-card">
-            <div>
-              <p className="tx-meta">
-                <span className={tx.type === "income" ? "positive" : "negative"}>
-                  {tx.type === "income" ? "Доходы" : "Расходы"}
-                </span>
-                <span>{toHumanDate(tx.date)}</span>
-                <span>{tx.category}</span>
-              </p>
-              <h4>{formatMoney(tx.amount)}</h4>
-              {tx.note && <p className="tx-note">{tx.note}</p>}
-              {tx.type === "income" && tx.spread?.enabled && (
-                <p className="tx-note">Распределение: {toHumanDate(tx.spread.startDate)} - {toHumanDate(tx.spread.endDate)}</p>
-              )}
-            </div>
-            <div className="actions">
-              <button type="button" className="btn secondary" onClick={() => onEdit(tx.id)}>
-                Изменить
-              </button>
-              <button type="button" className="btn danger" onClick={() => onDelete(tx.id)}>
-                Удалить
-              </button>
-            </div>
-          </article>
+          <Card key={tx.id} size="small" className="tx-item">
+            <Row justify="space-between" align="middle" gutter={[8, 8]}>
+              <Col xs={24} md={16}>
+                <Space size={8} wrap>
+                  <Tag color={tx.type === "income" ? "green" : "red"}>{tx.type === "income" ? "Доходы" : "Расходы"}</Tag>
+                  <Tag>{toHumanDate(tx.date)}</Tag>
+                  <Tag>{tx.category}</Tag>
+                </Space>
+                <Typography.Title level={5} style={{ margin: "8px 0 0" }}>
+                  {formatMoney(tx.amount)}
+                </Typography.Title>
+                {tx.note && (
+                  <Typography.Text type="secondary" style={{ display: "block" }}>
+                    {tx.note}
+                  </Typography.Text>
+                )}
+              </Col>
+              <Col xs={24} md={8}>
+                <Space>
+                  <Button icon={<EditOutlined />} onClick={() => onEdit(tx.id)}>
+                    Изменить
+                  </Button>
+                  <Popconfirm title="Удалить транзакцию?" onConfirm={() => onDelete(tx.id)} okText="Удалить" cancelText="Отмена">
+                    <Button icon={<DeleteOutlined />}>Удалить</Button>
+                  </Popconfirm>
+                </Space>
+              </Col>
+            </Row>
+          </Card>
         ))}
-        {filtered.length === 0 && <p className="empty">Транзакций по фильтру нет.</p>}
-      </div>
-    </section>
+
+        {filtered.length === 0 && <Typography.Text type="secondary">Транзакций по фильтру нет.</Typography.Text>}
+      </Space>
+    </Card>
   );
 }

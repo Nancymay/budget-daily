@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { ConfigProvider, Layout, Tabs, Typography } from "antd";
 import { HeaderPanel } from "./components/HeaderPanel";
 import { DailyTable } from "./components/DailyTable";
 import { TransactionFormModal } from "./components/TransactionFormModal";
@@ -9,6 +10,7 @@ import { buildForecast } from "./lib/finance";
 import { getBaseCategories, loadState, saveState } from "./lib/storage";
 import type { AppState, Transaction, TransactionType } from "./types/models";
 
+const { Content } = Layout;
 const baseCategories = getBaseCategories();
 
 type ActiveView = "forecast" | "transactions" | "categories" | "summary";
@@ -120,11 +122,6 @@ export default function App() {
   };
 
   const deleteTransaction = (id: string) => {
-    const confirmDelete = window.confirm("Удалить транзакцию?");
-    if (!confirmDelete) {
-      return;
-    }
-
     setState((prev) => ({
       ...prev,
       transactions: prev.transactions.filter((tx) => tx.id !== id)
@@ -132,11 +129,6 @@ export default function App() {
   };
 
   const deleteCategory = (type: TransactionType, category: string) => {
-    const confirmDelete = window.confirm(`Удалить категорию "${category}" из списка?`);
-    if (!confirmDelete) {
-      return;
-    }
-
     setState((prev) => ({
       ...prev,
       settings: {
@@ -181,71 +173,81 @@ export default function App() {
   };
 
   return (
-    <div className="app">
-      <h1>Budget Daily</h1>
+    <ConfigProvider
+      theme={{
+        token: {
+          borderRadius: 12,
+          colorPrimary: "#1677ff"
+        }
+      }}
+    >
+      <Layout className="app-layout">
+        <Content className="app-content">
+          <Typography.Title level={2} style={{ marginTop: 0 }}>
+            Budget Daily
+          </Typography.Title>
 
-      <HeaderPanel
-        month={month}
-        onMonthChange={setMonth}
-        startBalance={startBalance}
-        onStartBalanceChange={setStartBalance}
-        forecast={forecast}
-      />
+          <HeaderPanel
+            month={month}
+            onMonthChange={setMonth}
+            startBalance={startBalance}
+            onStartBalanceChange={setStartBalance}
+            forecast={forecast}
+          />
 
-      <div className="tabs">
-        <button className={`tab ${view === "forecast" ? "active" : ""}`} onClick={() => setView("forecast")}>
-          Прогноз по дням
-        </button>
-        <button className={`tab ${view === "transactions" ? "active" : ""}`} onClick={() => setView("transactions")}>
-          Транзакции
-        </button>
-        <button className={`tab ${view === "categories" ? "active" : ""}`} onClick={() => setView("categories")}>
-          Категории
-        </button>
-        <button className={`tab ${view === "summary" ? "active" : ""}`} onClick={() => setView("summary")}>
-          Итого
-        </button>
-      </div>
+          <Tabs
+            className="main-tabs"
+            activeKey={view}
+            onChange={(key) => setView(key as ActiveView)}
+            items={[
+              { key: "forecast", label: "Прогноз по дням" },
+              { key: "transactions", label: "Транзакции" },
+              { key: "categories", label: "Категории" },
+              { key: "summary", label: "Итого" }
+            ]}
+          />
 
-      {view === "forecast" ? (
-        <DailyTable rows={forecast.rows} referenceDate={forecast.referenceDate} />
-      ) : view === "transactions" ? (
-        <TransactionsPage
-          transactions={state.transactions}
-          categories={mergedCategories}
-          onAdd={() => {
-            setEditingId(null);
-            setModalOpen(true);
-          }}
-          onEdit={(id) => {
-            setEditingId(id);
-            setModalOpen(true);
-          }}
-          onDelete={deleteTransaction}
-        />
-      ) : view === "categories" ? (
-        <CategoriesPage
-          month={month}
-          categories={mergedCategories}
-          transactions={state.transactions}
-          onAddCategory={addCategory}
-          onDeleteCategory={deleteCategory}
-        />
-      ) : (
-        <SummaryPage month={month} transactions={state.transactions} />
-      )}
+          {view === "forecast" ? (
+            <DailyTable rows={forecast.rows} referenceDate={forecast.referenceDate} />
+          ) : view === "transactions" ? (
+            <TransactionsPage
+              transactions={state.transactions}
+              categories={mergedCategories}
+              onAdd={() => {
+                setEditingId(null);
+                setModalOpen(true);
+              }}
+              onEdit={(id) => {
+                setEditingId(id);
+                setModalOpen(true);
+              }}
+              onDelete={deleteTransaction}
+            />
+          ) : view === "categories" ? (
+            <CategoriesPage
+              month={month}
+              categories={mergedCategories}
+              transactions={state.transactions}
+              onAddCategory={addCategory}
+              onDeleteCategory={deleteCategory}
+            />
+          ) : (
+            <SummaryPage month={month} transactions={state.transactions} />
+          )}
 
-      <TransactionFormModal
-        open={modalOpen}
-        month={month}
-        categories={mergedCategories}
-        initial={editingTransaction}
-        onClose={() => {
-          setEditingId(null);
-          setModalOpen(false);
-        }}
-        onSubmit={saveTransaction}
-      />
-    </div>
+          <TransactionFormModal
+            open={modalOpen}
+            month={month}
+            categories={mergedCategories}
+            initial={editingTransaction}
+            onClose={() => {
+              setEditingId(null);
+              setModalOpen(false);
+            }}
+            onSubmit={saveTransaction}
+          />
+        </Content>
+      </Layout>
+    </ConfigProvider>
   );
 }

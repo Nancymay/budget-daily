@@ -1,3 +1,4 @@
+import { Card, Col, Progress, Row, Space, Tag, Typography } from "antd";
 import { useMemo } from "react";
 import { isDateInMonth } from "../lib/date";
 import { formatMoney } from "../lib/money";
@@ -14,7 +15,7 @@ function colorByCategory(category: string): string {
     hash = (hash * 31 + category.charCodeAt(i)) >>> 0;
   }
   const hue = hash % 360;
-  return `hsl(${hue}deg 90% 58%)`;
+  return `hsl(${hue}deg 90% 52%)`;
 }
 
 export function SummaryPage({ month, transactions }: SummaryPageProps) {
@@ -29,64 +30,47 @@ export function SummaryPage({ month, transactions }: SummaryPageProps) {
     }
 
     const list = Array.from(byCategory.entries())
-      .map(([category, amount]) => ({ category, amount }))
+      .map(([category, amount], index) => ({
+        category,
+        amount,
+        color: colorByCategory(`${category}:${index}`)
+      }))
       .sort((a, b) => b.amount - a.amount);
 
     const total = list.reduce((acc, item) => acc + item.amount, 0);
     return {
       total,
-      list: list.map((item, index) => ({
+      list: list.map((item) => ({
         ...item,
-        color: colorByCategory(`${item.category}:${index}`),
-        percent: total > 0 ? (item.amount / total) * 100 : 0
+        percent: total > 0 ? Number(((item.amount / total) * 100).toFixed(1)) : 0
       }))
     };
   }, [transactions, month]);
 
-  const pieBackground = useMemo(() => {
-    if (slices.list.length === 0) {
-      return "conic-gradient(#2a3243 0 100%)";
-    }
-
-    let start = 0;
-    const chunks = slices.list.map((item) => {
-      const end = start + item.percent;
-      const chunk = `${item.color} ${start.toFixed(2)}% ${end.toFixed(2)}%`;
-      start = end;
-      return chunk;
-    });
-
-    return `conic-gradient(${chunks.join(",")})`;
-  }, [slices]);
-
   return (
-    <section className="panel">
-      <h3 className="categories-title">Итого по расходам за месяц</h3>
-      <div className="summary-grid">
-        <div className="pie-wrap">
-          <div className="pie-chart" style={{ background: pieBackground }} />
-          <div className="pie-center">
-            <span>Всего</span>
-            <strong>{formatMoney(slices.total)}</strong>
+    <Card>
+      <Row gutter={[16, 16]} align="middle">
+        <Col xs={24} md={8}>
+          <div className="progress-wrap">
+            <Progress type="circle" percent={100} format={() => formatMoney(slices.total)} />
           </div>
-        </div>
-
-        <div className="categories-list-vertical">
-          {slices.list.map((item) => (
-            <div key={item.category} className="summary-row">
-              <div className="summary-label">
-                <span className="dot" style={{ background: item.color }} />
-                <span>{item.category}</span>
+        </Col>
+        <Col xs={24} md={16}>
+          <Typography.Title level={5}>Распределение расходов по категориям</Typography.Title>
+          <Space direction="vertical" size={10} style={{ width: "100%" }}>
+            {slices.list.map((item) => (
+              <div key={item.category} className="summary-line">
+                <Space>
+                  <Tag color={item.color}>{item.category}</Tag>
+                  <Typography.Text>{formatMoney(item.amount)}</Typography.Text>
+                </Space>
+                <Typography.Text type="secondary">{item.percent}%</Typography.Text>
               </div>
-              <div className="summary-values">
-                <strong>{formatMoney(item.amount)}</strong>
-                <span>{item.percent.toFixed(1)}%</span>
-              </div>
-            </div>
-          ))}
-          {slices.list.length === 0 && <p className="empty">Нет расходов за выбранный месяц.</p>}
-        </div>
-      </div>
-    </section>
+            ))}
+            {slices.list.length === 0 && <Typography.Text type="secondary">Нет расходов за выбранный месяц.</Typography.Text>}
+          </Space>
+        </Col>
+      </Row>
+    </Card>
   );
 }

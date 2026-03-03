@@ -1,3 +1,5 @@
+import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
+import { Button, Card, Col, Popconfirm, Row, Select, Space, Table, Typography, Input, Tag } from "antd";
 import { useMemo, useState } from "react";
 import { isDateInMonth } from "../lib/date";
 import { formatMoney } from "../lib/money";
@@ -16,18 +18,23 @@ export function CategoriesPage({ month, categories, transactions, onAddCategory,
   const [name, setName] = useState("");
 
   const rows = useMemo(() => {
-    const list: Array<{ type: TransactionType; category: string; total: number }> = [];
+    const list: Array<{ key: string; type: TransactionType; category: string; total: number }> = [];
 
-    for (const type of ["expense", "income"] as const) {
-      for (const category of categories[type]) {
+    for (const currentType of ["expense", "income"] as const) {
+      for (const category of categories[currentType]) {
         const total = transactions.reduce((acc, tx) => {
-          if (tx.type !== type || tx.category !== category || !isDateInMonth(tx.date, month)) {
+          if (tx.type !== currentType || tx.category !== category || !isDateInMonth(tx.date, month)) {
             return acc;
           }
           return acc + tx.amount;
         }, 0);
 
-        list.push({ type, category, total });
+        list.push({
+          key: `${currentType}:${category}`,
+          type: currentType,
+          category,
+          total
+        });
       }
     }
 
@@ -42,48 +49,76 @@ export function CategoriesPage({ month, categories, transactions, onAddCategory,
   };
 
   return (
-    <section className="panel">
-      <div className="toolbar">
-        <label className="field compact">
-          <span>Тип</span>
-          <select value={type} onChange={(event) => setType(event.target.value as TransactionType)}>
-            <option value="income">Доходы</option>
-            <option value="expense">Расходы</option>
-          </select>
-        </label>
-        <label className="field">
-          <span>Новая категория</span>
-          <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Например: Кафе" />
-        </label>
-        <button type="button" className="btn" onClick={add}>
-          + Добавить категорию
-        </button>
-      </div>
+    <Card>
+      <Row gutter={[12, 12]} align="bottom">
+        <Col xs={24} md={6}>
+          <label className="field-label">Тип</label>
+          <Select
+            value={type}
+            onChange={(value) => setType(value)}
+            style={{ width: "100%" }}
+            options={[
+              { value: "income", label: "Доходы" },
+              { value: "expense", label: "Расходы" }
+            ]}
+          />
+        </Col>
+        <Col xs={24} md={12}>
+          <label className="field-label">Новая категория</label>
+          <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="Например: Продукты" />
+        </Col>
+        <Col xs={24} md={6}>
+          <Button type="primary" icon={<PlusOutlined />} onClick={add} block>
+            Добавить
+          </Button>
+        </Col>
+      </Row>
 
-      <h3 className="categories-title">Категории за выбранный месяц</h3>
-      <div className="categories-list-vertical">
-        {rows.map((row) => (
-          <article key={`${row.type}:${row.category}`} className="category-row">
-            <div>
-              <p className="tx-meta">
-                <span className={row.type === "income" ? "positive" : "negative"}>
-                  {row.type === "income" ? "Доходы" : "Расходы"}
-                </span>
-                <span>{row.category}</span>
-              </p>
-              <strong>{formatMoney(row.total)}</strong>
-            </div>
-            <button
-              type="button"
-              className="btn danger"
-              onClick={() => onDeleteCategory(row.type, row.category)}
-            >
-              Удалить
-            </button>
-          </article>
-        ))}
-        {rows.length === 0 && <p className="empty">Категорий пока нет.</p>}
-      </div>
-    </section>
+      <Typography.Title level={5} style={{ marginTop: 20 }}>
+        Категории за выбранный месяц
+      </Typography.Title>
+
+      <Table
+        rowKey="key"
+        size="small"
+        pagination={false}
+        dataSource={rows}
+        columns={[
+          {
+            title: "Тип",
+            dataIndex: "type",
+            width: 120,
+            render: (value: TransactionType) => (
+              <Tag color={value === "income" ? "green" : "red"}>{value === "income" ? "Доходы" : "Расходы"}</Tag>
+            )
+          },
+          { title: "Категория", dataIndex: "category" },
+          {
+            title: "Сумма",
+            dataIndex: "total",
+            align: "right",
+            width: 160,
+            render: (value: number) => formatMoney(value)
+          },
+          {
+            title: "",
+            dataIndex: "actions",
+            width: 120,
+            render: (_, row) => (
+              <Space>
+                <Popconfirm
+                  title="Удалить категорию?"
+                  onConfirm={() => onDeleteCategory(row.type, row.category)}
+                  okText="Удалить"
+                  cancelText="Отмена"
+                >
+                  <Button icon={<DeleteOutlined />}>Удалить</Button>
+                </Popconfirm>
+              </Space>
+            )
+          }
+        ]}
+      />
+    </Card>
   );
 }
