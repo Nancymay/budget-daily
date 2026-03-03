@@ -1,5 +1,5 @@
 import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
-import { Button, Card, Col, Popconfirm, Row, Select, Space, Table, Typography, Input, Tag } from "antd";
+import { Button, Card, Col, Popconfirm, Row, Select, Space, Table, Typography, Input, Tag, Grid } from "antd";
 import { useMemo, useState } from "react";
 import { isDateInMonth } from "../lib/date";
 import { formatMoney } from "../lib/money";
@@ -14,6 +14,8 @@ interface CategoriesPageProps {
 }
 
 export function CategoriesPage({ month, categories, transactions, onAddCategory, onDeleteCategory }: CategoriesPageProps) {
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const [type, setType] = useState<TransactionType>("expense");
   const [name, setName] = useState("");
 
@@ -82,28 +84,30 @@ export function CategoriesPage({ month, categories, transactions, onAddCategory,
         rowKey="key"
         size="small"
         pagination={false}
+        scroll={{ x: 420 }}
         dataSource={rows}
         columns={[
           {
             title: "Тип",
             dataIndex: "type",
-            width: 120,
+            width: isMobile ? 92 : 120,
             render: (value: TransactionType) => (
               <Tag color={value === "income" ? "green" : "red"}>{value === "income" ? "Доходы" : "Расходы"}</Tag>
             )
           },
-          { title: "Категория", dataIndex: "category" },
+          { title: "Категория", dataIndex: "category", ellipsis: true, width: isMobile ? 110 : undefined },
           {
             title: "Сумма",
             dataIndex: "total",
             align: "right",
-            width: 160,
+            width: isMobile ? 88 : 160,
             render: (value: number) => formatMoney(value)
           },
           {
             title: "",
             dataIndex: "actions",
-            width: 120,
+            width: isMobile ? 56 : 120,
+            align: "center",
             render: (_, row) => (
               <Space>
                 <Popconfirm
@@ -112,7 +116,9 @@ export function CategoriesPage({ month, categories, transactions, onAddCategory,
                   okText="Удалить"
                   cancelText="Отмена"
                 >
-                  <Button icon={<DeleteOutlined />}>Удалить</Button>
+                  <Button icon={<DeleteOutlined />} size={isMobile ? "small" : "middle"}>
+                    {isMobile ? "" : "Удалить"}
+                  </Button>
                 </Popconfirm>
               </Space>
             )
