@@ -3,6 +3,7 @@ import { Alert, Button, DatePicker, Form, Input, InputNumber, Modal, Select, Spa
 import { useEffect, useMemo, useState } from "react";
 import type { Transaction, TransactionType } from "../types/models";
 import type { Dayjs } from "dayjs";
+import { getTodayISO } from "../lib/date";
 
 interface TransactionFormModalProps {
   open: boolean;
@@ -49,7 +50,7 @@ function getInitialState(
 
   return {
     type,
-    date: `${month}-01`,
+    date: getTodayISO(),
     amount: null,
     selectedCategory: options[0] ?? "__new__",
     newCategory: "",
@@ -140,7 +141,8 @@ export function TransactionFormModal({ open, month, categories, initial, onClose
           <Form.Item label="Дата" style={{ minWidth: 170, flex: 1 }}>
             <DatePicker
               value={parseDateValue(form.date)}
-              onChange={(value) => setForm({ ...form, date: value ? value.format("YYYY-MM-DD") : `${month}-01` })}
+              onChange={(value) => setForm({ ...form, date: value ? value.format("YYYY-MM-DD") : getTodayISO() })}
+              format="DD/MM/YYYY"
               style={{ width: "100%" }}
             />
           </Form.Item>
