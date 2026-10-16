@@ -10,10 +10,14 @@ import { BackupMenu } from "./components/BackupMenu";
 import { balanceAt, buildForecast } from "./lib/finance";
 import { getPeriodFor, getTodayISO, shiftPeriod, type Period } from "./lib/date";
 import { getBaseCategories, loadState, saveState } from "./lib/storage";
-import type { AppState, DistributionSettings, Transaction, TransactionType } from "./types/models";
+import type { AppState, DistributionSettings, PeriodMode, Settings, Transaction, TransactionType } from "./types/models";
 
 const { Content } = Layout;
 const baseCategories = getBaseCategories();
+
+function periodDays(settings: Pick<Settings, "periodMode" | "payDays">): number[] {
+  return settings.periodMode === "month" ? [] : settings.payDays;
+}
 
 type ActiveView = "forecast" | "transactions" | "categories" | "summary";
 
@@ -29,14 +33,17 @@ export default function App() {
   const [view, setView] = useState<ActiveView>("forecast");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [period, setPeriod] = useState<Period>(() => getPeriodFor(getTodayISO(), state.settings.payDays));
+  const [period, setPeriod] = useState<Period>(() => getPeriodFor(getTodayISO(), periodDays(state.settings)));
 
   useEffect(() => {
     saveState(state);
   }, [state]);
 
   const payDays = state.settings.payDays;
-  const currentPeriod = getPeriodFor(getTodayISO(), payDays);
+  const periodMode = state.settings.periodMode;
+  // Calendar months are simply periods without paydays.
+  const activeDays = periodDays(state.settings);
+  const currentPeriod = getPeriodFor(getTodayISO(), activeDays);
   const isCurrentPeriod = currentPeriod.start === period.start;
 
   const startBalance = useMemo(
@@ -85,7 +92,14 @@ export default function App() {
 
   const setPayDays = (nextPayDays: number[]) => {
     setState((prev) => ({ ...prev, settings: { ...prev.settings, payDays: nextPayDays } }));
-    setPeriod(getPeriodFor(getTodayISO(), nextPayDays));
+    setPeriod(getPeriodFor(getTodayISO(), periodDays({ periodMode, payDays: nextPayDays })));
+  };
+
+  const setPeriodMode = (mode: PeriodMode) => {
+    setState((prev) => ({ ...prev, settings: { ...prev.settings, periodMode: mode } }));
+    // Keep looking at roughly the same dates: the current one if visible, else this period's start.
+    const anchor = getTodayISO() >= period.start && getTodayISO() <= period.end ? getTodayISO() : period.start;
+    setPeriod(getPeriodFor(anchor, periodDays({ periodMode: mode, payDays })));
   };
 
   const setDistribution = (distribution: DistributionSettings) => {
@@ -99,7 +113,7 @@ export default function App() {
     setEditingId(null);
     setModalOpen(false);
     setState(next);
-    setPeriod(getPeriodFor(getTodayISO(), next.settings.payDays));
+    setPeriod(getPeriodFor(getTodayISO(), periodDays(next.settings)));
   };
 
   const saveTransaction = (payload: Omit<Transaction, "id">, existingId?: string) => {
@@ -187,6 +201,17 @@ export default function App() {
         token: {
           borderRadius: 12,
           colorPrimary: "#1677ff"
+        },
+        components: {
+          // Toggles: white track, selected option in solid blue with white text.
+          Segmented: {
+            trackBg: "#ffffff",
+            itemSelectedBg: "#1677ff",
+            itemSelectedColor: "#ffffff",
+            itemColor: "#475467",
+            itemHoverColor: "#1677ff",
+            itemHoverBg: "#f0f7ff"
+          }
         }
       }}
     >
@@ -203,9 +228,11 @@ export default function App() {
             <HeaderPanel
               period={period}
               isCurrentPeriod={isCurrentPeriod}
-              onPrevPeriod={() => setPeriod((p) => shiftPeriod(p, -1, payDays))}
-              onNextPeriod={() => setPeriod((p) => shiftPeriod(p, 1, payDays))}
+              onPrevPeriod={() => setPeriod((p) => shiftPeriod(p, -1, activeDays))}
+              onNextPeriod={() => setPeriod((p) => shiftPeriod(p, 1, activeDays))}
               onCurrentPeriod={() => setPeriod(currentPeriod)}
+              periodMode={periodMode}
+              onPeriodModeChange={setPeriodMode}
               startBalance={startBalance}
               onStartBalanceChange={setStartBalance}
               distribution={state.settings.distribution}
