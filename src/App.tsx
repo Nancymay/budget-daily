@@ -7,7 +7,8 @@ import { TransactionsPage } from "./components/TransactionsPage";
 import { CategoriesPage } from "./components/CategoriesPage";
 import { SummaryPage } from "./components/SummaryPage";
 import { BackupMenu } from "./components/BackupMenu";
-import { buildForecast } from "./lib/finance";
+import { balanceAt, buildForecast } from "./lib/finance";
+import { getPeriodFor, getTodayISO, shiftPeriod, type Period } from "./lib/date";
 import { getBaseCategories, loadState, saveState } from "./lib/storage";
 import type { AppState, DistributionSettings, Transaction, TransactionType } from "./types/models";
 
@@ -28,13 +29,20 @@ export default function App() {
   const [view, setView] = useState<ActiveView>("forecast");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [period, setPeriod] = useState<Period>(() => getPeriodFor(getTodayISO(), state.settings.payDays));
 
   useEffect(() => {
     saveState(state);
   }, [state]);
 
-  const month = state.settings.month;
-  const startBalance = state.settings.startBalanceByMonth[month] ?? 0;
+  const payDays = state.settings.payDays;
+  const currentPeriod = getPeriodFor(getTodayISO(), payDays);
+  const isCurrentPeriod = currentPeriod.start === period.start;
+
+  const startBalance = useMemo(
+    () => balanceAt(period.start, state.settings.opening, state.transactions),
+    [period.start, state.settings.opening, state.transactions]
+  );
 
   const mergedCategories: Record<TransactionType, string[]> = useMemo(
     () => ({
@@ -47,7 +55,7 @@ export default function App() {
   const forecast = useMemo(
     () =>
       buildForecast({
-        month,
+        period,
         startBalance,
         transactions: state.transactions,
         distribution: {
@@ -55,7 +63,7 @@ export default function App() {
           enabled: true
         }
       }),
-    [month, startBalance, state.transactions, state.settings.distribution]
+    [period, startBalance, state.transactions, state.settings.distribution]
   );
 
   const editingTransaction = useMemo(
@@ -63,35 +71,21 @@ export default function App() {
     [state.transactions, editingId]
   );
 
-  const setMonth = (nextMonth: string) => {
-    if (!nextMonth) {
-      return;
-    }
-
-    setState((prev) => ({
-      ...prev,
-      settings: {
-        ...prev.settings,
-        month: nextMonth,
-        startBalanceByMonth: {
-          ...prev.settings.startBalanceByMonth,
-          [nextMonth]: prev.settings.startBalanceByMonth[nextMonth] ?? 0
-        }
-      }
-    }));
-  };
-
+  // Correcting the balance makes this period's start the new anchor; every other
+  // period is carried over from it.
   const setStartBalance = (value: number) => {
     setState((prev) => ({
       ...prev,
       settings: {
         ...prev.settings,
-        startBalanceByMonth: {
-          ...prev.settings.startBalanceByMonth,
-          [prev.settings.month]: Number.isFinite(value) ? value : 0
-        }
+        opening: { date: period.start, amount: Number.isFinite(value) ? value : 0 }
       }
     }));
+  };
+
+  const setPayDays = (nextPayDays: number[]) => {
+    setState((prev) => ({ ...prev, settings: { ...prev.settings, payDays: nextPayDays } }));
+    setPeriod(getPeriodFor(getTodayISO(), nextPayDays));
   };
 
   const setDistribution = (distribution: DistributionSettings) => {
@@ -105,6 +99,7 @@ export default function App() {
     setEditingId(null);
     setModalOpen(false);
     setState(next);
+    setPeriod(getPeriodFor(getTodayISO(), next.settings.payDays));
   };
 
   const saveTransaction = (payload: Omit<Transaction, "id">, existingId?: string) => {
@@ -202,12 +197,15 @@ export default function App() {
               <Typography.Title level={2} style={{ margin: 0 }}>
                 Budget Daily
               </Typography.Title>
-              <BackupMenu state={state} onRestore={restoreState} />
+              <BackupMenu state={state} onRestore={restoreState} payDays={payDays} onPayDaysChange={setPayDays} />
             </div>
 
             <HeaderPanel
-              month={month}
-              onMonthChange={setMonth}
+              period={period}
+              isCurrentPeriod={isCurrentPeriod}
+              onPrevPeriod={() => setPeriod((p) => shiftPeriod(p, -1, payDays))}
+              onNextPeriod={() => setPeriod((p) => shiftPeriod(p, 1, payDays))}
+              onCurrentPeriod={() => setPeriod(currentPeriod)}
               startBalance={startBalance}
               onStartBalanceChange={setStartBalance}
               distribution={state.settings.distribution}
@@ -231,7 +229,7 @@ export default function App() {
               <DailyTable rows={forecast.rows} referenceDate={forecast.referenceDate} />
             ) : view === "transactions" ? (
               <TransactionsPage
-                month={month}
+                period={period}
                 transactions={state.transactions}
                 categories={mergedCategories}
                 onAdd={() => {
@@ -246,19 +244,19 @@ export default function App() {
               />
             ) : view === "categories" ? (
               <CategoriesPage
-                month={month}
+                period={period}
                 categories={mergedCategories}
                 transactions={state.transactions}
                 onAddCategory={addCategory}
                 onDeleteCategory={deleteCategory}
               />
             ) : (
-              <SummaryPage month={month} transactions={state.transactions} />
+              <SummaryPage period={period} transactions={state.transactions} />
             )}
 
             <TransactionFormModal
               open={modalOpen}
-              month={month}
+              period={period}
               categories={mergedCategories}
               initial={editingTransaction}
               onClose={() => {

@@ -2,11 +2,11 @@ import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
 import { Button, Card, Col, Popconfirm, Row, Select, Space, Switch, Tag, Typography } from "antd";
 import { useMemo, useState } from "react";
 import { formatMoney } from "../lib/money";
-import { toHumanDate, toHumanDayMonth, transactionTouchesMonth } from "../lib/date";
+import { toHumanDate, toHumanDayMonth, transactionTouchesPeriod, type Period } from "../lib/date";
 import type { Transaction, TransactionType } from "../types/models";
 
 interface TransactionsPageProps {
-  month: string;
+  period: Period;
   transactions: Transaction[];
   categories: Record<TransactionType, string[]>;
   onAdd: () => void;
@@ -14,7 +14,7 @@ interface TransactionsPageProps {
   onDelete: (id: string) => void;
 }
 
-export function TransactionsPage({ month, transactions, categories, onAdd, onEdit, onDelete }: TransactionsPageProps) {
+export function TransactionsPage({ period, transactions, categories, onAdd, onEdit, onDelete }: TransactionsPageProps) {
   const [typeFilter, setTypeFilter] = useState<"all" | TransactionType>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [allMonths, setAllMonths] = useState(false);
@@ -28,11 +28,11 @@ export function TransactionsPage({ month, transactions, categories, onAdd, onEdi
 
   const filtered = useMemo(() => {
     return transactions
-      .filter((tx) => allMonths || transactionTouchesMonth(tx, month))
+      .filter((tx) => allMonths || transactionTouchesPeriod(tx, period))
       .filter((tx) => (typeFilter === "all" ? true : tx.type === typeFilter))
       .filter((tx) => (categoryFilter === "all" ? true : tx.category === categoryFilter))
       .sort((a, b) => b.date.localeCompare(a.date));
-  }, [transactions, typeFilter, categoryFilter, allMonths, month]);
+  }, [transactions, typeFilter, categoryFilter, allMonths, period]);
 
   const totals = useMemo(
     () =>
@@ -84,7 +84,7 @@ export function TransactionsPage({ month, transactions, categories, onAdd, onEdi
       <div className="tx-summary">
         <Space size={6}>
           <Switch size="small" checked={allMonths} onChange={setAllMonths} />
-          <Typography.Text type="secondary">Все месяцы</Typography.Text>
+          <Typography.Text type="secondary">Все периоды</Typography.Text>
         </Space>
         <Typography.Text type="secondary">
           {filtered.length} шт.
@@ -133,7 +133,7 @@ export function TransactionsPage({ month, transactions, categories, onAdd, onEdi
 
         {filtered.length === 0 && (
           <Typography.Text type="secondary">
-            {allMonths ? "Транзакций по фильтру нет." : "В этом месяце транзакций по фильтру нет."}
+            {allMonths ? "Транзакций по фильтру нет." : "В этом периоде транзакций по фильтру нет."}
           </Typography.Text>
         )}
       </Space>

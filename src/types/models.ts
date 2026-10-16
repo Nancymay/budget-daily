@@ -24,9 +24,16 @@ export interface DistributionSettings {
   fromDate?: string;
 }
 
+/** Known balance at the start of a given day; balances of all periods are derived from it. */
+export interface OpeningBalance {
+  date: string;
+  amount: number;
+}
+
 export interface Settings {
-  month: string;
-  startBalanceByMonth: Record<string, number>;
+  /** Nominal paydays (1–31); weekends shift to Friday. Empty means calendar months. */
+  payDays: number[];
+  opening: OpeningBalance;
   distribution: DistributionSettings;
   customCategories: Record<TransactionType, string[]>;
 }
@@ -54,5 +61,11 @@ export interface ForecastResult {
   endBalance: number;
   distBase: number | null;
   dailyLimit: number | null;
+  /** Last day the current dailyLimit applies to. */
+  limitUntil: string | null;
+  /** Limit for the next stretch, once more money arrives. */
+  nextLimit: { from: string; limit: number } | null;
+  /** Money missing to get to limitUntil without going negative (0 when fine). */
+  shortfall: number;
   referenceDate: string | null;
 }
