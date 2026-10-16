@@ -1,9 +1,32 @@
+// Local calendar date (toISOString() would give the UTC date, which is
+// "yesterday" for users east of UTC shortly after midnight).
 export function getTodayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 export function getCurrentMonth(): string {
-  return new Date().toISOString().slice(0, 7);
+  return getTodayISO().slice(0, 7);
+}
+
+// Today if it falls inside the month, otherwise the month's first day.
+export function getDefaultDateForMonth(month: string): string {
+  const today = getTodayISO();
+  return isDateInMonth(today, month) ? today : `${month}-01`;
+}
+
+// Whether a transaction affects the given month (by date or by spread range).
+export function transactionTouchesMonth(
+  tx: { date: string; spread?: { enabled: boolean; startDate: string; endDate: string } },
+  month: string
+): boolean {
+  if (tx.spread?.enabled) {
+    return tx.spread.startDate.slice(0, 7) <= month && tx.spread.endDate.slice(0, 7) >= month;
+  }
+  return isDateInMonth(tx.date, month);
 }
 
 export function parseMonthStart(month: string): Date {

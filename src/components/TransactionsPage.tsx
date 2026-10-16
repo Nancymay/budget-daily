@@ -1,11 +1,12 @@
 import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
-import { Button, Card, Col, Popconfirm, Row, Select, Space, Tag, Typography } from "antd";
+import { Button, Card, Col, Popconfirm, Row, Select, Space, Switch, Tag, Typography } from "antd";
 import { useMemo, useState } from "react";
 import { formatMoney } from "../lib/money";
-import { toHumanDate } from "../lib/date";
+import { toHumanDate, toHumanDayMonth, transactionTouchesMonth } from "../lib/date";
 import type { Transaction, TransactionType } from "../types/models";
 
 interface TransactionsPageProps {
+  month: string;
   transactions: Transaction[];
   categories: Record<TransactionType, string[]>;
   onAdd: () => void;
@@ -13,9 +14,10 @@ interface TransactionsPageProps {
   onDelete: (id: string) => void;
 }
 
-export function TransactionsPage({ transactions, categories, onAdd, onEdit, onDelete }: TransactionsPageProps) {
+export function TransactionsPage({ month, transactions, categories, onAdd, onEdit, onDelete }: TransactionsPageProps) {
   const [typeFilter, setTypeFilter] = useState<"all" | TransactionType>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [allMonths, setAllMonths] = useState(false);
 
   const availableCategories = useMemo(() => {
     if (typeFilter === "all") {
@@ -26,15 +28,28 @@ export function TransactionsPage({ transactions, categories, onAdd, onEdit, onDe
 
   const filtered = useMemo(() => {
     return transactions
+      .filter((tx) => allMonths || transactionTouchesMonth(tx, month))
       .filter((tx) => (typeFilter === "all" ? true : tx.type === typeFilter))
       .filter((tx) => (categoryFilter === "all" ? true : tx.category === categoryFilter))
-      .sort((a, b) => (a.date < b.date ? 1 : -1));
-  }, [transactions, typeFilter, categoryFilter]);
+      .sort((a, b) => b.date.localeCompare(a.date));
+  }, [transactions, typeFilter, categoryFilter, allMonths, month]);
+
+  const totals = useMemo(
+    () =>
+      filtered.reduce(
+        (acc, tx) => {
+          acc[tx.type] += tx.amount;
+          return acc;
+        },
+        { income: 0, expense: 0 }
+      ),
+    [filtered]
+  );
 
   return (
     <Card>
       <Row gutter={[12, 12]} align="bottom" className="toolbar-row">
-        <Col xs={24} sm={8}>
+        <Col xs={12} sm={7}>
           <label className="field-label">Тип</label>
           <Select
             value={typeFilter}
@@ -50,7 +65,7 @@ export function TransactionsPage({ transactions, categories, onAdd, onEdit, onDe
             ]}
           />
         </Col>
-        <Col xs={24} sm={10}>
+        <Col xs={12} sm={9}>
           <label className="field-label">Категория</label>
           <Select
             value={categoryFilter}
@@ -59,22 +74,39 @@ export function TransactionsPage({ transactions, categories, onAdd, onEdit, onDe
             options={[{ value: "all", label: "Все" }, ...availableCategories.map((item) => ({ value: item, label: item }))]}
           />
         </Col>
-        <Col xs={24} sm={6}>
+        <Col xs={24} sm={8}>
           <Button type="primary" icon={<PlusOutlined />} onClick={onAdd} block>
             Добавить
           </Button>
         </Col>
       </Row>
 
-      <Space direction="vertical" style={{ width: "100%", marginTop: 16 }} size={10}>
+      <div className="tx-summary">
+        <Space size={6}>
+          <Switch size="small" checked={allMonths} onChange={setAllMonths} />
+          <Typography.Text type="secondary">Все месяцы</Typography.Text>
+        </Space>
+        <Typography.Text type="secondary">
+          {filtered.length} шт.
+          {totals.income > 0 && <> · <span className="amount-income">+{formatMoney(totals.income)}</span></>}
+          {totals.expense > 0 && <> · <span className="amount-expense">−{formatMoney(totals.expense)}</span></>}
+        </Typography.Text>
+      </div>
+
+      <Space direction="vertical" style={{ width: "100%", marginTop: 12 }} size={10}>
         {filtered.map((tx) => (
           <Card key={tx.id} size="small" className="tx-item">
             <Row justify="space-between" align="middle" gutter={[8, 8]}>
               <Col xs={24} md={16}>
                 <Space size={8} wrap>
-                  <Tag color={tx.type === "income" ? "green" : "red"}>{tx.type === "income" ? "Доходы" : "Расходы"}</Tag>
+                  <Tag color={tx.type === "income" ? "green" : "red"}>{tx.type === "income" ? "Доход" : "Расход"}</Tag>
                   <Tag>{toHumanDate(tx.date)}</Tag>
                   <Tag>{tx.category}</Tag>
+                  {tx.spread?.enabled && (
+                    <Tag color="blue">
+                      по дням {toHumanDayMonth(tx.spread.startDate)}–{toHumanDayMonth(tx.spread.endDate)}
+                    </Tag>
+                  )}
                 </Space>
                 <Typography.Title level={5} style={{ margin: "8px 0 0" }}>
                   {formatMoney(tx.amount)}
@@ -99,7 +131,11 @@ export function TransactionsPage({ transactions, categories, onAdd, onEdit, onDe
           </Card>
         ))}
 
-        {filtered.length === 0 && <Typography.Text type="secondary">Транзакций по фильтру нет.</Typography.Text>}
+        {filtered.length === 0 && (
+          <Typography.Text type="secondary">
+            {allMonths ? "Транзакций по фильтру нет." : "В этом месяце транзакций по фильтру нет."}
+          </Typography.Text>
+        )}
       </Space>
     </Card>
   );

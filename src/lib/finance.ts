@@ -55,12 +55,16 @@ function applyIncomeToRows(rows: Map<string, { income: number; expense: number }
       return;
     }
 
-    const perDay = tx.amount / totalDays;
+    // Work in whole kopecks so the per-day parts always add up to the exact amount:
+    // the leftover kopecks go to the last day of the range.
+    const totalCents = Math.round(tx.amount * 100);
+    const perDayCents = Math.floor(totalCents / totalDays);
+    const lastDayCents = totalCents - perDayCents * (totalDays - 1);
     for (const day of monthDays) {
       if (day >= spread.startDate && day <= spread.endDate) {
         const row = rows.get(day);
         if (row) {
-          row.income += perDay;
+          row.income += (day === spread.endDate ? lastDayCents : perDayCents) / 100;
         }
       }
     }
