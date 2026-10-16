@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { ConfigProvider, Layout, Tabs, Typography } from "antd";
+import { App as AntApp, ConfigProvider, Layout, Tabs, Typography } from "antd";
 import { HeaderPanel } from "./components/HeaderPanel";
 import { DailyTable } from "./components/DailyTable";
 import { TransactionFormModal } from "./components/TransactionFormModal";
 import { TransactionsPage } from "./components/TransactionsPage";
 import { CategoriesPage } from "./components/CategoriesPage";
 import { SummaryPage } from "./components/SummaryPage";
+import { BackupMenu } from "./components/BackupMenu";
 import { buildForecast } from "./lib/finance";
 import { getBaseCategories, loadState, saveState } from "./lib/storage";
-import type { AppState, Transaction, TransactionType } from "./types/models";
+import type { AppState, DistributionSettings, Transaction, TransactionType } from "./types/models";
 
 const { Content } = Layout;
 const baseCategories = getBaseCategories();
@@ -91,6 +92,19 @@ export default function App() {
         }
       }
     }));
+  };
+
+  const setDistribution = (distribution: DistributionSettings) => {
+    setState((prev) => ({
+      ...prev,
+      settings: { ...prev.settings, distribution }
+    }));
+  };
+
+  const restoreState = (next: AppState) => {
+    setEditingId(null);
+    setModalOpen(false);
+    setState(next);
   };
 
   const saveTransaction = (payload: Omit<Transaction, "id">, existingId?: string) => {
@@ -181,73 +195,81 @@ export default function App() {
         }
       }}
     >
-      <Layout className="app-layout">
-        <Content className="app-content">
-          <Typography.Title level={2} style={{ marginTop: 0 }}>
-            Budget Daily
-          </Typography.Title>
+      <AntApp>
+        <Layout className="app-layout">
+          <Content className="app-content">
+            <div className="app-title-row">
+              <Typography.Title level={2} style={{ margin: 0 }}>
+                Budget Daily
+              </Typography.Title>
+              <BackupMenu state={state} onRestore={restoreState} />
+            </div>
 
-          <HeaderPanel
-            month={month}
-            onMonthChange={setMonth}
-            startBalance={startBalance}
-            onStartBalanceChange={setStartBalance}
-            forecast={forecast}
-          />
-
-          <Tabs
-            className="main-tabs"
-            activeKey={view}
-            onChange={(key) => setView(key as ActiveView)}
-            items={[
-              { key: "forecast", label: "Прогноз по дням" },
-              { key: "transactions", label: "Транзакции" },
-              { key: "categories", label: "Категории" },
-              { key: "summary", label: "Итого" }
-            ]}
-          />
-
-          {view === "forecast" ? (
-            <DailyTable rows={forecast.rows} referenceDate={forecast.referenceDate} />
-          ) : view === "transactions" ? (
-            <TransactionsPage
-              transactions={state.transactions}
-              categories={mergedCategories}
-              onAdd={() => {
-                setEditingId(null);
-                setModalOpen(true);
-              }}
-              onEdit={(id) => {
-                setEditingId(id);
-                setModalOpen(true);
-              }}
-              onDelete={deleteTransaction}
+            <HeaderPanel
+              month={month}
+              onMonthChange={setMonth}
+              startBalance={startBalance}
+              onStartBalanceChange={setStartBalance}
+              distribution={state.settings.distribution}
+              onDistributionChange={setDistribution}
+              forecast={forecast}
             />
-          ) : view === "categories" ? (
-            <CategoriesPage
+
+            <Tabs
+              className="main-tabs"
+              activeKey={view}
+              onChange={(key) => setView(key as ActiveView)}
+              items={[
+                { key: "forecast", label: "Прогноз по дням" },
+                { key: "transactions", label: "Транзакции" },
+                { key: "categories", label: "Категории" },
+                { key: "summary", label: "Итого" }
+              ]}
+            />
+
+            {view === "forecast" ? (
+              <DailyTable rows={forecast.rows} referenceDate={forecast.referenceDate} />
+            ) : view === "transactions" ? (
+              <TransactionsPage
+                month={month}
+                transactions={state.transactions}
+                categories={mergedCategories}
+                onAdd={() => {
+                  setEditingId(null);
+                  setModalOpen(true);
+                }}
+                onEdit={(id) => {
+                  setEditingId(id);
+                  setModalOpen(true);
+                }}
+                onDelete={deleteTransaction}
+              />
+            ) : view === "categories" ? (
+              <CategoriesPage
+                month={month}
+                categories={mergedCategories}
+                transactions={state.transactions}
+                onAddCategory={addCategory}
+                onDeleteCategory={deleteCategory}
+              />
+            ) : (
+              <SummaryPage month={month} transactions={state.transactions} />
+            )}
+
+            <TransactionFormModal
+              open={modalOpen}
               month={month}
               categories={mergedCategories}
-              transactions={state.transactions}
-              onAddCategory={addCategory}
-              onDeleteCategory={deleteCategory}
+              initial={editingTransaction}
+              onClose={() => {
+                setEditingId(null);
+                setModalOpen(false);
+              }}
+              onSubmit={saveTransaction}
             />
-          ) : (
-            <SummaryPage month={month} transactions={state.transactions} />
-          )}
-
-          <TransactionFormModal
-            open={modalOpen}
-            month={month}
-            categories={mergedCategories}
-            initial={editingTransaction}
-            onClose={() => {
-              setEditingId(null);
-              setModalOpen(false);
-            }}
-            onSubmit={saveTransaction}
-          />
-        </Content>
-      </Layout>
+          </Content>
+        </Layout>
+      </AntApp>
     </ConfigProvider>
   );
 }

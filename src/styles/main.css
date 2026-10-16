@@ -44,8 +44,89 @@ body {
   font-size: 13px;
 }
 
+.forecast-table .row-today > td {
+  background: #e6f4ff !important;
+}
+
+.forecast-table .row-past > td {
+  color: #98a2b3;
+}
+
+.cell-empty {
+  color: #d0d5dd;
+}
+
+.limit-block {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #e6f4ff;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.limit-block--negative {
+  background: #fff1f0;
+}
+
+.limit-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.limit-caption {
+  font-size: 12px;
+  color: #667085;
+}
+
+.limit-value {
+  font-size: 28px;
+  line-height: 1.2;
+  color: #1677ff;
+}
+
+.limit-block--negative .limit-value {
+  color: #ff4d4f;
+}
+
+.limit-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
 .toolbar-row {
   margin-bottom: 8px;
+}
+
+.tx-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.amount-income {
+  color: #389e0d;
+}
+
+.amount-expense {
+  color: #cf1322;
+}
+
+.app-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
 .tx-item .ant-card-body {
@@ -116,6 +197,18 @@ body {
 
   .pie-wrap-ant {
     width: min(220px, 88vw);
+  }
+
+  .header-card .stats-row .ant-statistic-content {
+    font-size: 15px;
+  }
+
+  .header-card .stats-row .ant-statistic-title {
+    font-size: 12px;
+  }
+
+  .limit-value {
+    font-size: 24px;
   }
 
   .pie-total-ant {

@@ -1,9 +1,24 @@
 import dayjs from "dayjs";
-import { Alert, Button, DatePicker, Form, Input, InputNumber, Modal, Select, Space } from "antd";
+import {
+  Alert,
+  Button,
+  Checkbox,
+  Col,
+  DatePicker,
+  Form,
+  Input,
+  InputNumber,
+  Modal,
+  Row,
+  Segmented,
+  Select,
+  Typography
+} from "antd";
 import { useEffect, useMemo, useState } from "react";
 import type { Transaction, TransactionType } from "../types/models";
 import type { Dayjs } from "dayjs";
-import { getTodayISO } from "../lib/date";
+import { getDaysInMonth, getDefaultDateForMonth } from "../lib/date";
+import { formatMoney } from "../lib/money";
 
 interface TransactionFormModalProps {
   open: boolean;
@@ -21,11 +36,22 @@ interface FormState {
   selectedCategory: string;
   newCategory: string;
   note: string;
+  spreadEnabled: boolean;
+  spreadStart: string;
+  spreadEnd: string;
 }
 
 function parseDateValue(input: string): Dayjs | null {
+  if (!input) {
+    return null;
+  }
   const value = dayjs(input);
   return value.isValid() ? value : null;
+}
+
+function lastDayOfMonth(date: string): string {
+  const days = getDaysInMonth(date.slice(0, 7));
+  return days[days.length - 1] ?? date;
 }
 
 function getInitialState(
@@ -38,28 +64,47 @@ function getInitialState(
   const hasInitialCategory = Boolean(initial?.category && options.includes(initial.category));
 
   if (initial) {
+    const spread = initial.spread;
     return {
       type,
       date: initial.date,
       amount: initial.amount,
       selectedCategory: hasInitialCategory ? initial.category : "__new__",
       newCategory: hasInitialCategory ? "" : initial.category,
-      note: initial.note ?? ""
+      note: initial.note ?? "",
+      spreadEnabled: Boolean(spread?.enabled),
+      spreadStart: spread?.startDate ?? initial.date,
+      spreadEnd: spread?.endDate ?? lastDayOfMonth(initial.date)
     };
   }
 
+  const date = getDefaultDateForMonth(month);
   return {
     type,
-    date: getTodayISO(),
+    date,
     amount: null,
     selectedCategory: options[0] ?? "__new__",
     newCategory: "",
-    note: ""
+    note: "",
+    spreadEnabled: false,
+    spreadStart: date,
+    spreadEnd: lastDayOfMonth(date)
   };
 }
 
-export function TransactionFormModal({ open, month, categories, initial, onClose, onSubmit }: TransactionFormModalProps) {
-  const [form, setForm] = useState<FormState>(getInitialState(month, initial, categories));
+function countDays(start: string, end: string): number {
+  return dayjs(end).diff(dayjs(start), "day") + 1;
+}
+
+export function TransactionFormModal({
+  open,
+  month,
+  categories,
+  initial,
+  onClose,
+  onSubmit
+}: TransactionFormModalProps) {
+  const [form, setForm] = useState<FormState>(() => getInitialState(month, initial, categories));
   const [error, setError] = useState<string>("");
 
   useEffect(() => {
@@ -67,9 +112,13 @@ export function TransactionFormModal({ open, month, categories, initial, onClose
       setForm(getInitialState(month, initial, categories));
       setError("");
     }
-  }, [open, month, initial, categories]);
+    // categories are intentionally not a dependency: re-initialising the form
+    // when a category is added elsewhere would wipe what the user typed.
+  }, [open, month, initial]);
 
   const options = useMemo(() => categories[form.type], [categories, form.type]);
+  const canSpread = form.type === "income";
+  const spreadDays = form.spreadStart && form.spreadEnd ? countDays(form.spreadStart, form.spreadEnd) : 0;
 
   const submit = () => {
     const amount = Number(form.amount);
@@ -89,6 +138,12 @@ export function TransactionFormModal({ open, month, categories, initial, onClose
       return;
     }
 
+    const useSpread = canSpread && form.spreadEnabled;
+    if (useSpread && (!form.spreadStart || !form.spreadEnd || form.spreadEnd < form.spreadStart)) {
+      setError("Укажите корректный период распределения");
+      return;
+    }
+
     onSubmit(
       {
         type: form.type,
@@ -96,7 +151,7 @@ export function TransactionFormModal({ open, month, categories, initial, onClose
         amount,
         category,
         note: form.note.trim(),
-        spread: undefined
+        spread: useSpread ? { enabled: true, startDate: form.spreadStart, endDate: form.spreadEnd } : undefined
       },
       initial?.id
     );
@@ -117,9 +172,10 @@ export function TransactionFormModal({ open, month, categories, initial, onClose
       ]}
       destroyOnClose
     >
-      <Form layout="vertical">
-        <Form.Item label="Тип">
-          <Select
+      <Form layout="vertical" onFinish={submit}>
+        <Form.Item>
+          <Segmented
+            block
             value={form.type}
             onChange={(value) => {
               const nextType = value as TransactionType;
@@ -131,31 +187,51 @@ export function TransactionFormModal({ open, month, categories, initial, onClose
               });
             }}
             options={[
-              { value: "income", label: "Доходы" },
-              { value: "expense", label: "Расходы" }
+              { value: "expense", label: "Расход" },
+              { value: "income", label: "Доход" }
             ]}
           />
         </Form.Item>
 
-        <Space style={{ width: "100%" }} size={12} wrap>
-          <Form.Item label="Дата" style={{ minWidth: 170, flex: 1 }}>
-            <DatePicker
-              value={parseDateValue(form.date)}
-              onChange={(value) => setForm({ ...form, date: value ? value.format("YYYY-MM-DD") : getTodayISO() })}
-              format="DD/MM/YYYY"
-              style={{ width: "100%" }}
-            />
-          </Form.Item>
-          <Form.Item label="Сумма" style={{ minWidth: 170, flex: 1 }}>
-            <InputNumber
-              min={0.01}
-              precision={2}
-              value={form.amount}
-              onChange={(value) => setForm({ ...form, amount: value })}
-              style={{ width: "100%" }}
-            />
-          </Form.Item>
-        </Space>
+        <Row gutter={12}>
+          <Col span={12}>
+            <Form.Item label="Сумма">
+              <InputNumber
+                autoFocus
+                min={0.01}
+                precision={2}
+                inputMode="decimal"
+                value={form.amount}
+                onChange={(value) => setForm({ ...form, amount: value })}
+                onPressEnter={submit}
+                style={{ width: "100%" }}
+              />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item label="Дата">
+              <DatePicker
+                value={parseDateValue(form.date)}
+                allowClear={false}
+                onChange={(value) => {
+                  if (!value) {
+                    return;
+                  }
+                  const date = value.format("YYYY-MM-DD");
+                  // Keep the spread range following the date until the user customises it.
+                  const followSpread = !form.spreadEnabled;
+                  setForm({
+                    ...form,
+                    date,
+                    ...(followSpread ? { spreadStart: date, spreadEnd: lastDayOfMonth(date) } : {})
+                  });
+                }}
+                format="DD/MM/YYYY"
+                style={{ width: "100%" }}
+              />
+            </Form.Item>
+          </Col>
+        </Row>
 
         <Form.Item label="Категория">
           <Select
@@ -170,7 +246,46 @@ export function TransactionFormModal({ open, month, categories, initial, onClose
 
         {form.selectedCategory === "__new__" && (
           <Form.Item label="Новая категория">
-            <Input value={form.newCategory} onChange={(event) => setForm({ ...form, newCategory: event.target.value })} />
+            <Input
+              value={form.newCategory}
+              onChange={(event) => setForm({ ...form, newCategory: event.target.value })}
+            />
+          </Form.Item>
+        )}
+
+        {canSpread && (
+          <Form.Item>
+            <Checkbox
+              checked={form.spreadEnabled}
+              onChange={(event) => setForm({ ...form, spreadEnabled: event.target.checked })}
+            >
+              Распределить доход по дням
+            </Checkbox>
+            {form.spreadEnabled && (
+              <div style={{ marginTop: 8 }}>
+                <DatePicker.RangePicker
+                  style={{ width: "100%" }}
+                  format="DD/MM/YYYY"
+                  allowClear={false}
+                  value={[parseDateValue(form.spreadStart), parseDateValue(form.spreadEnd)]}
+                  onChange={(values) => {
+                    const [start, end] = values ?? [];
+                    if (start && end) {
+                      setForm({
+                        ...form,
+                        spreadStart: start.format("YYYY-MM-DD"),
+                        spreadEnd: end.format("YYYY-MM-DD")
+                      });
+                    }
+                  }}
+                />
+                {spreadDays > 0 && Number(form.amount) > 0 && (
+                  <Typography.Text type="secondary" style={{ display: "block", marginTop: 6, fontSize: 12 }}>
+                    {spreadDays} дн. × {formatMoney(Number(form.amount) / spreadDays)} в день
+                  </Typography.Text>
+                )}
+              </div>
+            )}
           </Form.Item>
         )}
 
