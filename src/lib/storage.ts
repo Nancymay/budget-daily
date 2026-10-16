@@ -141,6 +141,7 @@ export function getDefaultState(): AppState {
   return {
     settings: {
       payDays: DEFAULT_PAY_DAYS,
+      periodMode: "pay",
       opening: { date: getPeriodFor(getTodayISO(), DEFAULT_PAY_DAYS).start, amount: 0 },
       distribution: {
         enabled: true,
@@ -167,6 +168,7 @@ export function normalizeState(parsed: Partial<AppState>): AppState {
   return {
     settings: {
       payDays,
+      periodMode: settings?.periodMode === "month" ? "month" : "pay",
       opening,
       distribution: {
         enabled: true,

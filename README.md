@@ -55,6 +55,7 @@ npm run deploy
 ```ts
 settings: {
   payDays: number[];            // дни зарплаты, например [5, 20]; [] — календарные месяцы
+  periodMode: "pay" | "month";  // от зарплаты до зарплаты или календарный месяц
   opening: { date: "YYYY-MM-DD"; amount: number }; // известный остаток на начало дня
   distribution: {
     enabled: boolean;

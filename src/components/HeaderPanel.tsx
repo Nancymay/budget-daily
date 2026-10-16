@@ -3,7 +3,7 @@ import { LeftOutlined, RightOutlined } from "@ant-design/icons";
 import { Button, Card, Col, DatePicker, InputNumber, Row, Segmented, Statistic } from "antd";
 import { formatMoney } from "../lib/money";
 import { clampDateToPeriod, diffDays, toHumanDayMonth, type Period } from "../lib/date";
-import type { DistributionMode, DistributionSettings, ForecastResult } from "../types/models";
+import type { DistributionMode, DistributionSettings, ForecastResult, PeriodMode } from "../types/models";
 
 interface HeaderPanelProps {
   period: Period;
@@ -11,11 +11,20 @@ interface HeaderPanelProps {
   onPrevPeriod: () => void;
   onNextPeriod: () => void;
   onCurrentPeriod: () => void;
+  periodMode: PeriodMode;
+  onPeriodModeChange: (mode: PeriodMode) => void;
   startBalance: number;
   onStartBalanceChange: (value: number) => void;
   distribution: DistributionSettings;
   onDistributionChange: (value: DistributionSettings) => void;
   forecast: ForecastResult;
+}
+
+function formatMonthName(date: string): string {
+  const label = new Intl.DateTimeFormat("ru-RU", { month: "long", year: "numeric" })
+    .format(new Date(`${date}T12:00:00`))
+    .replace(/\s*г\.?$/, "");
+  return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
 function LimitCaption({ forecast, period }: { forecast: ForecastResult; period: Period }) {
@@ -55,6 +64,8 @@ export function HeaderPanel({
   onPrevPeriod,
   onNextPeriod,
   onCurrentPeriod,
+  periodMode,
+  onPeriodModeChange,
   startBalance,
   onStartBalanceChange,
   distribution,
@@ -68,11 +79,24 @@ export function HeaderPanel({
     <Card className="header-card">
       <Row gutter={[12, 12]} align="bottom">
         <Col xs={24} sm={14} md={10}>
-          <label className="field-label">Период</label>
+          <div className="period-head">
+            <label className="field-label">Период</label>
+            <Segmented
+              size="small"
+              value={periodMode}
+              onChange={(value) => onPeriodModeChange(value as PeriodMode)}
+              options={[
+                { value: "pay", label: "От зп до зп" },
+                { value: "month", label: "Месяц" }
+              ]}
+            />
+          </div>
           <div className="period-nav">
             <Button icon={<LeftOutlined />} onClick={onPrevPeriod} aria-label="Предыдущий период" />
             <span className="period-label">
-              {toHumanDayMonth(period.start)} – {toHumanDayMonth(period.end)}
+              {periodMode === "month"
+                ? formatMonthName(period.start)
+                : `${toHumanDayMonth(period.start)} – ${toHumanDayMonth(period.end)}`}
             </span>
             <Button icon={<RightOutlined />} onClick={onNextPeriod} aria-label="Следующий период" />
             {!isCurrentPeriod && (

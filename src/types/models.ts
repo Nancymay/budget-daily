@@ -1,5 +1,7 @@
 export type TransactionType = "income" | "expense";
 
+export type PeriodMode = "pay" | "month";
+
 export type DistributionMode = "fromStart" | "fromToday" | "fromDate";
 
 export interface IncomeSpread {
@@ -33,6 +35,8 @@ export interface OpeningBalance {
 export interface Settings {
   /** Nominal paydays (1–31); weekends shift to Friday. Empty means calendar months. */
   payDays: number[];
+  /** "pay": from payday to payday; "month": calendar months. */
+  periodMode: PeriodMode;
   opening: OpeningBalance;
   distribution: DistributionSettings;
   customCategories: Record<TransactionType, string[]>;
