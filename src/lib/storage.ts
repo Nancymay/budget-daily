@@ -35,6 +35,20 @@ function sanitizeSpread(input: unknown): IncomeSpread | undefined {
   return { enabled: true, startDate: candidate.startDate, endDate: candidate.endDate };
 }
 
+function sanitizeLimits(input: unknown): Record<string, number> {
+  if (typeof input !== "object" || input === null) {
+    return {};
+  }
+  const result: Record<string, number> = {};
+  for (const [category, value] of Object.entries(input)) {
+    const amount = Number(value);
+    if (category.trim() && Number.isFinite(amount) && amount > 0) {
+      result[category] = amount;
+    }
+  }
+  return result;
+}
+
 function sanitizeStringList(input: unknown): string[] {
   return Array.isArray(input) ? input.filter((item): item is string => typeof item === "string" && item.trim() !== "") : [];
 }
@@ -142,6 +156,7 @@ export function getDefaultState(): AppState {
     settings: {
       payDays: DEFAULT_PAY_DAYS,
       periodMode: "pay",
+      categoryLimits: {},
       opening: { date: getPeriodFor(getTodayISO(), DEFAULT_PAY_DAYS).start, amount: 0 },
       distribution: {
         enabled: true,
@@ -169,6 +184,7 @@ export function normalizeState(parsed: Partial<AppState>): AppState {
     settings: {
       payDays,
       periodMode: settings?.periodMode === "month" ? "month" : "pay",
+      categoryLimits: sanitizeLimits(settings?.categoryLimits),
       opening,
       distribution: {
         enabled: true,

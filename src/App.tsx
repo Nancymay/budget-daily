@@ -165,9 +165,25 @@ export default function App() {
             type === "expense"
               ? prev.settings.customCategories.expense.filter((item) => item !== category)
               : prev.settings.customCategories.expense
-        }
+        },
+        categoryLimits:
+          type === "expense"
+            ? Object.fromEntries(Object.entries(prev.settings.categoryLimits).filter(([name]) => name !== category))
+            : prev.settings.categoryLimits
       }
     }));
+  };
+
+  const setCategoryLimit = (category: string, monthlyLimit: number | null) => {
+    setState((prev) => {
+      const categoryLimits = { ...prev.settings.categoryLimits };
+      if (monthlyLimit && monthlyLimit > 0) {
+        categoryLimits[category] = monthlyLimit;
+      } else {
+        delete categoryLimits[category];
+      }
+      return { ...prev, settings: { ...prev.settings, categoryLimits } };
+    });
   };
 
   const addCategory = (type: TransactionType, category: string): boolean => {
@@ -276,6 +292,9 @@ export default function App() {
                 transactions={state.transactions}
                 onAddCategory={addCategory}
                 onDeleteCategory={deleteCategory}
+                periodMode={periodMode}
+                limits={state.settings.categoryLimits}
+                onLimitChange={setCategoryLimit}
               />
             ) : (
               <SummaryPage period={period} transactions={state.transactions} />

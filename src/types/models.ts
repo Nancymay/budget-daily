@@ -37,6 +37,8 @@ export interface Settings {
   payDays: number[];
   /** "pay": from payday to payday; "month": calendar months. */
   periodMode: PeriodMode;
+  /** Monthly spending limit per expense category; scaled to the period shown. */
+  categoryLimits: Record<string, number>;
   opening: OpeningBalance;
   distribution: DistributionSettings;
   customCategories: Record<TransactionType, string[]>;
