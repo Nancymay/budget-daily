@@ -52,6 +52,11 @@ body {
   color: #98a2b3;
 }
 
+.cell-weekday {
+  font-size: 11px;
+  color: #98a2b3;
+}
+
 .cell-empty {
   color: #d0d5dd;
 }
@@ -91,6 +96,25 @@ body {
 
 .limit-block--negative .limit-value {
   color: #ff4d4f;
+}
+
+.limit-caption--alert {
+  color: #cf1322;
+  font-weight: 500;
+}
+
+.period-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.period-label {
+  min-width: 112px;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .limit-controls {

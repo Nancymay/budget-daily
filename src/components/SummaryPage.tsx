@@ -1,12 +1,12 @@
 import { Card, Col, Row, Space, Tag, Typography } from "antd";
 import { blue, cyan, geekblue, gold, green, lime, magenta, orange, purple, red, volcano } from "@ant-design/colors";
 import { useMemo } from "react";
-import { isDateInMonth } from "../lib/date";
+import { isDateInPeriod, type Period } from "../lib/date";
 import { formatMoney } from "../lib/money";
 import type { Transaction } from "../types/models";
 
 interface SummaryPageProps {
-  month: string;
+  period: Period;
   transactions: Transaction[];
 }
 
@@ -24,12 +24,12 @@ const ANT_COLOR_SCALE = [
   magenta[5]
 ];
 
-export function SummaryPage({ month, transactions }: SummaryPageProps) {
+export function SummaryPage({ period, transactions }: SummaryPageProps) {
   const slices = useMemo(() => {
     const byCategory = new Map<string, number>();
 
     for (const tx of transactions) {
-      if (tx.type !== "expense" || !isDateInMonth(tx.date, month)) {
+      if (tx.type !== "expense" || !isDateInPeriod(tx.date, period)) {
         continue;
       }
       byCategory.set(tx.category, (byCategory.get(tx.category) ?? 0) + tx.amount);
@@ -48,7 +48,7 @@ export function SummaryPage({ month, transactions }: SummaryPageProps) {
     }));
 
     return { total, list };
-  }, [transactions, month]);
+  }, [transactions, period]);
 
   const pieBackground = useMemo(() => {
     if (slices.list.length === 0) {
@@ -90,7 +90,7 @@ export function SummaryPage({ month, transactions }: SummaryPageProps) {
                 <Typography.Text type="secondary">{item.percent}%</Typography.Text>
               </div>
             ))}
-            {slices.list.length === 0 && <Typography.Text type="secondary">Нет расходов за выбранный месяц.</Typography.Text>}
+            {slices.list.length === 0 && <Typography.Text type="secondary">Нет расходов за этот период.</Typography.Text>}
           </Space>
         </Col>
       </Row>

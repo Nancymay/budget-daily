@@ -1,5 +1,5 @@
-import { getCurrentMonth } from "./date";
-import type { AppState, DistributionMode, IncomeSpread, Transaction, TransactionType } from "../types/models";
+import { getPeriodFor, getTodayISO } from "./date";
+import type { AppState, DistributionMode, IncomeSpread, OpeningBalance, Transaction, TransactionType } from "../types/models";
 
 const STORAGE_KEY = "budget-daily.v1";
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -93,16 +93,55 @@ function sanitizeTransactions(input: unknown): Transaction[] {
   }, []);
 }
 
+export const DEFAULT_PAY_DAYS = [5, 20];
+
+function sanitizePayDays(input: unknown): number[] | null {
+  if (!Array.isArray(input)) {
+    return null;
+  }
+  const days = input.map(Number).filter((day) => Number.isInteger(day) && day >= 1 && day <= 31);
+  return [...new Set(days)].sort((a, b) => a - b);
+}
+
+function sanitizeOpening(input: unknown): OpeningBalance | null {
+  if (typeof input !== "object" || input === null) {
+    return null;
+  }
+  const candidate = input as Partial<OpeningBalance>;
+  const amount = Number(candidate.amount);
+  if (typeof candidate.date !== "string" || !ISO_DATE.test(candidate.date) || !Number.isFinite(amount)) {
+    return null;
+  }
+  return { date: candidate.date, amount };
+}
+
+// Older versions stored a manual start balance per calendar month. The latest
+// non-zero one becomes the anchor; everything else is carried over from it.
+function migrateMonthBalances(input: unknown, payDays: number[]): OpeningBalance {
+  const balances = sanitizeBalances(input);
+  const latest = Object.keys(balances)
+    .filter((month) => balances[month] !== 0)
+    .sort()
+    .pop();
+  if (latest) {
+    return { date: `${latest}-01`, amount: balances[latest] };
+  }
+  const earliest = Object.keys(balances).sort()[0];
+  if (earliest) {
+    return { date: `${earliest}-01`, amount: 0 };
+  }
+  return { date: getPeriodFor(getTodayISO(), payDays).start, amount: 0 };
+}
+
 export function getBaseCategories(): Record<TransactionType, string[]> {
   return BASE_CATEGORIES;
 }
 
 export function getDefaultState(): AppState {
-  const month = getCurrentMonth();
   return {
     settings: {
-      month,
-      startBalanceByMonth: { [month]: 0 },
+      payDays: DEFAULT_PAY_DAYS,
+      opening: { date: getPeriodFor(getTodayISO(), DEFAULT_PAY_DAYS).start, amount: 0 },
       distribution: {
         enabled: true,
         mode: "fromToday"
@@ -119,15 +158,16 @@ export function getDefaultState(): AppState {
 /** Validates arbitrary parsed JSON and turns it into a safe AppState. */
 export function normalizeState(parsed: Partial<AppState>): AppState {
   const fallback = getDefaultState();
-  const settings = parsed.settings;
-  const month = typeof settings?.month === "string" && /^\d{4}-\d{2}$/.test(settings.month) ? settings.month : fallback.settings.month;
+  const settings = parsed.settings as (AppState["settings"] & { startBalanceByMonth?: unknown }) | undefined;
+  const payDays = sanitizePayDays(settings?.payDays) ?? fallback.settings.payDays;
+  const opening = sanitizeOpening(settings?.opening) ?? migrateMonthBalances(settings?.startBalanceByMonth, payDays);
   const mode = isDistributionMode(settings?.distribution?.mode) ? settings.distribution.mode : "fromToday";
   const fromDate = settings?.distribution?.fromDate;
 
   return {
     settings: {
-      month,
-      startBalanceByMonth: sanitizeBalances(settings?.startBalanceByMonth),
+      payDays,
+      opening,
       distribution: {
         enabled: true,
         mode,
@@ -148,10 +188,7 @@ export function loadState(): AppState {
     if (!raw) {
       return getDefaultState();
     }
-    const state = normalizeState(JSON.parse(raw) as Partial<AppState>);
-    // Always open on the current month; the chosen month used to stick forever.
-    state.settings.month = getCurrentMonth();
-    return state;
+    return normalizeState(JSON.parse(raw) as Partial<AppState>);
   } catch {
     return getDefaultState();
   }

@@ -1,137 +1,165 @@
-import { clampDateToMonth, getDaysInMonth, getTodayISO, isDateInMonth } from "./date";
+import { addDays, clampDateToPeriod, diffDays, getDaysInRange, getTodayISO, isDateInPeriod, type Period } from "./date";
 import { round2 } from "./money";
-import type { DistributionSettings, ForecastResult, Transaction } from "../types/models";
+import type { DistributionSettings, ForecastResult, OpeningBalance, Transaction } from "../types/models";
 
 interface BuildForecastInput {
-  month: string;
+  period: Period;
   startBalance: number;
   transactions: Transaction[];
   distribution: DistributionSettings;
 }
 
-function diffDaysInclusive(start: string, end: string): number {
-  const startDate = new Date(`${start}T00:00:00`);
-  const endDate = new Date(`${end}T00:00:00`);
-  const msPerDay = 1000 * 60 * 60 * 24;
+/**
+ * Amount (in kopecks) a transaction contributes on each day it touches.
+ * A spread income is split evenly in whole kopecks; the remainder goes to its
+ * last day so the parts add up to the exact amount.
+ */
+function forEachDayPart(tx: Transaction, from: string, to: string, visit: (day: string, cents: number) => void): void {
+  const totalCents = Math.round(tx.amount * 100);
+  const spread = tx.type === "income" ? tx.spread : undefined;
 
-  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate < startDate) {
-    return 0;
+  if (!spread?.enabled) {
+    if (tx.date >= from && tx.date <= to) {
+      visit(tx.date, totalCents);
+    }
+    return;
   }
 
-  return Math.floor((endDate.getTime() - startDate.getTime()) / msPerDay) + 1;
+  const totalDays = diffDays(spread.startDate, spread.endDate) + 1;
+  if (totalDays <= 0) {
+    return;
+  }
+  const perDay = Math.floor(totalCents / totalDays);
+  const lastDay = totalCents - perDay * (totalDays - 1);
+  const start = spread.startDate > from ? spread.startDate : from;
+  const end = spread.endDate < to ? spread.endDate : to;
+  for (let day = start; day <= end; day = addDays(day, 1)) {
+    visit(day, day === spread.endDate ? lastDay : perDay);
+  }
 }
 
-function resolveReferenceDate(month: string, distribution: DistributionSettings): string | null {
-  const days = getDaysInMonth(month);
-  if (!days.length) {
-    return null;
+/** Balance at the start of `date`, carried forward (or back) from the opening balance. */
+export function balanceAt(date: string, opening: OpeningBalance, transactions: Transaction[]): number {
+  if (date === opening.date) {
+    return round2(opening.amount);
   }
+  const forward = date > opening.date;
+  const from = forward ? opening.date : date;
+  const to = addDays(forward ? date : opening.date, -1);
 
+  let netCents = 0;
+  for (const tx of transactions) {
+    forEachDayPart(tx, from, to, (_, cents) => {
+      netCents += tx.type === "income" ? cents : -cents;
+    });
+  }
+  return round2(opening.amount + (forward ? netCents : -netCents) / 100);
+}
+
+function resolveReferenceDate(period: Period, distribution: DistributionSettings): string {
   if (distribution.mode === "fromStart") {
-    return days[0];
+    return period.start;
   }
-
   if (distribution.mode === "fromDate") {
-    return clampDateToMonth(distribution.fromDate ?? days[0], month);
+    return clampDateToPeriod(distribution.fromDate ?? period.start, period);
   }
-
   const today = getTodayISO();
-  if (today >= days[0] && today <= days[days.length - 1]) {
-    return today;
-  }
-
-  return days[0];
+  return isDateInPeriod(today, period) ? today : period.start;
 }
 
-function applyIncomeToRows(rows: Map<string, { income: number; expense: number }>, tx: Transaction, monthDays: string[]): void {
-  if (tx.type !== "income") {
-    return;
-  }
+interface LimitSegment {
+  from: number;
+  to: number;
+  limit: number;
+  shortfall: number;
+}
 
-  const spread = tx.spread;
-  if (spread?.enabled) {
-    const totalDays = diffDaysInclusive(spread.startDate, spread.endDate);
-    if (!totalDays) {
-      return;
-    }
+function floor2(value: number): number {
+  return Math.floor(value * 100 + 1e-6) / 100;
+}
 
-    // Work in whole kopecks so the per-day parts always add up to the exact amount:
-    // the leftover kopecks go to the last day of the range.
-    const totalCents = Math.round(tx.amount * 100);
-    const perDayCents = Math.floor(totalCents / totalDays);
-    const lastDayCents = totalCents - perDayCents * (totalDays - 1);
-    for (const day of monthDays) {
-      if (day >= spread.startDate && day <= spread.endDate) {
-        const row = rows.get(day);
-        if (row) {
-          row.income += (day === spread.endDate ? lastDayCents : perDayCents) / 100;
-        }
+/**
+ * Splits the days from `startIndex` into stretches with an even daily limit so
+ * that the balance never goes below zero: money that arrives later is never
+ * spent before it arrives. Each stretch ends where the cash runs tightest
+ * (typically the day before the next income). Where even spending nothing
+ * leaves the balance negative, the limit is 0 and the gap is the shortfall.
+ */
+function splitIntoLimitSegments(net: number[], startIndex: number, startBalance: number): LimitSegment[] {
+  const segments: LimitSegment[] = [];
+  let cash = startBalance;
+  let i = startIndex;
+
+  while (i < net.length) {
+    let cumulative = cash;
+    let tightest = Infinity;
+    let tightestAt = i;
+    let lastNegative = -1;
+    let lowest = Infinity;
+    for (let j = i; j < net.length; j += 1) {
+      cumulative += net[j];
+      const perDay = cumulative / (j - i + 1);
+      if (perDay <= tightest) {
+        tightest = perDay;
+        tightestAt = j;
       }
+      if (cumulative < -0.005) {
+        lastNegative = j;
+      }
+      lowest = Math.min(lowest, cumulative);
     }
-    return;
-  }
 
-  if (monthDays.length > 0 && isDateInMonth(tx.date, monthDays[0].slice(0, 7))) {
-    const row = rows.get(tx.date);
-    if (row) {
-      row.income += tx.amount;
+    if (tightest >= 0) {
+      const limit = floor2(tightest);
+      let spent = cash;
+      for (let j = i; j <= tightestAt; j += 1) {
+        spent += net[j] - limit;
+      }
+      segments.push({ from: i, to: tightestAt, limit, shortfall: 0 });
+      cash = spent;
+      i = tightestAt + 1;
+    } else {
+      // Not enough money even when spending nothing: hold at 0 until the
+      // balance recovers for good.
+      let atEnd = cash;
+      for (let j = i; j <= lastNegative; j += 1) {
+        atEnd += net[j];
+      }
+      segments.push({ from: i, to: lastNegative, limit: 0, shortfall: round2(-lowest) });
+      cash = atEnd;
+      i = lastNegative + 1;
     }
   }
-}
 
-function applyExpenseToRows(rows: Map<string, { income: number; expense: number }>, tx: Transaction, month: string): void {
-  if (tx.type !== "expense") {
-    return;
-  }
-
-  if (!isDateInMonth(tx.date, month)) {
-    return;
-  }
-
-  const row = rows.get(tx.date);
-  if (row) {
-    row.expense += tx.amount;
-  }
+  return segments;
 }
 
 export function buildForecast(input: BuildForecastInput): ForecastResult {
-  const monthDays = getDaysInMonth(input.month);
-  if (monthDays.length === 0) {
-    return {
-      rows: [],
-      totalIncome: 0,
-      totalExpense: 0,
-      availableFunds: round2(input.startBalance),
-      endBalance: round2(input.startBalance),
-      distBase: null,
-      dailyLimit: null,
-      referenceDate: null
-    };
-  }
+  const days = getDaysInRange(input.period);
 
-  const rowsMap = new Map<string, { income: number; expense: number }>();
-  monthDays.forEach((day) => rowsMap.set(day, { income: 0, expense: 0 }));
-
+  const totals = new Map<string, { income: number; expense: number }>();
+  days.forEach((day) => totals.set(day, { income: 0, expense: 0 }));
   for (const tx of input.transactions) {
-    applyIncomeToRows(rowsMap, tx, monthDays);
-    applyExpenseToRows(rowsMap, tx, input.month);
+    forEachDayPart(tx, input.period.start, input.period.end, (day, cents) => {
+      const row = totals.get(day);
+      if (row) {
+        row[tx.type] += cents;
+      }
+    });
   }
 
   const rows: ForecastResult["rows"] = [];
-  monthDays.forEach((date, index) => {
-    const source = rowsMap.get(date) ?? { income: 0, expense: 0 };
-    const income = round2(source.income);
-    const expense = round2(source.expense);
-    const prevEnd = index === 0 ? round2(input.startBalance) : rows[index - 1].balanceEnd;
-    const balanceStart = prevEnd;
-    const balanceEnd = round2(balanceStart + income - expense);
-
+  days.forEach((date, index) => {
+    const source = totals.get(date) ?? { income: 0, expense: 0 };
+    const income = source.income / 100;
+    const expense = source.expense / 100;
+    const balanceStart = index === 0 ? round2(input.startBalance) : rows[index - 1].balanceEnd;
     rows.push({
       date,
       income,
       expense,
       balanceStart,
-      balanceEnd,
+      balanceEnd: round2(balanceStart + income - expense),
       dailyLimit: null,
       projectedEnd: null
     });
@@ -139,33 +167,40 @@ export function buildForecast(input: BuildForecastInput): ForecastResult {
 
   const totalIncome = round2(rows.reduce((acc, row) => acc + row.income, 0));
   const totalExpense = round2(rows.reduce((acc, row) => acc + row.expense, 0));
-  const availableFunds = round2(input.startBalance + totalIncome - totalExpense);
+  const endBalance = rows.length > 0 ? rows[rows.length - 1].balanceEnd : round2(input.startBalance);
+
+  const referenceDate = resolveReferenceDate(input.period, input.distribution);
+  const refIndex = rows.findIndex((row) => row.date === referenceDate);
 
   let distBase: number | null = null;
   let dailyLimit: number | null = null;
-  let referenceDate: string | null = null;
+  let limitUntil: string | null = null;
+  let nextLimit: ForecastResult["nextLimit"] = null;
+  let shortfall = 0;
 
-  if (input.distribution.enabled && rows.length > 0) {
-    referenceDate = resolveReferenceDate(input.month, input.distribution);
-    const refIndex = rows.findIndex((row) => row.date === referenceDate);
+  if (refIndex >= 0) {
+    const net = rows.map((row) => row.income - row.expense);
+    const startCash = rows[refIndex].balanceStart;
+    distBase = round2(startCash + net.slice(refIndex).reduce((acc, value) => acc + value, 0));
 
-    if (refIndex >= 0) {
-      const rowsFromReference = rows.slice(refIndex);
-      const balanceAtRef = rows[refIndex].balanceStart;
-      const futureIncome = rowsFromReference.reduce((acc, row) => acc + row.income, 0);
-      const futureExpense = rowsFromReference.reduce((acc, row) => acc + row.expense, 0);
-
-      distBase = round2(balanceAtRef + futureIncome - futureExpense);
-      const daysLeft = rowsFromReference.length;
-      dailyLimit = daysLeft > 0 ? round2(distBase / daysLeft) : null;
-
-      if (dailyLimit !== null) {
-        for (let i = refIndex; i < rows.length; i += 1) {
-          const dayOffset = i - refIndex + 1;
-          rows[i].dailyLimit = dailyLimit;
-          rows[i].projectedEnd = round2(distBase - dailyLimit * dayOffset);
-        }
+    const segments = splitIntoLimitSegments(net, refIndex, startCash);
+    let projected = startCash;
+    for (const segment of segments) {
+      for (let i = segment.from; i <= segment.to; i += 1) {
+        projected += net[i] - segment.limit;
+        rows[i].dailyLimit = segment.limit;
+        rows[i].projectedEnd = round2(projected);
       }
+    }
+
+    const [current, next] = segments;
+    if (current) {
+      dailyLimit = current.limit;
+      limitUntil = rows[current.to].date;
+      shortfall = current.shortfall;
+    }
+    if (next) {
+      nextLimit = { from: rows[next.from].date, limit: next.limit };
     }
   }
 
@@ -173,10 +208,13 @@ export function buildForecast(input: BuildForecastInput): ForecastResult {
     rows,
     totalIncome,
     totalExpense,
-    availableFunds,
-    endBalance: rows.length > 0 ? rows[rows.length - 1].balanceEnd : round2(input.startBalance),
+    availableFunds: endBalance,
+    endBalance,
     distBase,
     dailyLimit,
+    limitUntil,
+    nextLimit,
+    shortfall,
     referenceDate
   };
 }

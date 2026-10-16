@@ -1,19 +1,19 @@
 import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import { Button, Card, Col, Popconfirm, Row, Select, Space, Table, Typography, Input, Tag, Grid } from "antd";
 import { useMemo, useState } from "react";
-import { isDateInMonth } from "../lib/date";
+import { isDateInPeriod, type Period } from "../lib/date";
 import { formatMoney } from "../lib/money";
 import type { Transaction, TransactionType } from "../types/models";
 
 interface CategoriesPageProps {
-  month: string;
+  period: Period;
   categories: Record<TransactionType, string[]>;
   transactions: Transaction[];
   onAddCategory: (type: TransactionType, category: string) => boolean;
   onDeleteCategory: (type: TransactionType, category: string) => void;
 }
 
-export function CategoriesPage({ month, categories, transactions, onAddCategory, onDeleteCategory }: CategoriesPageProps) {
+export function CategoriesPage({ period, categories, transactions, onAddCategory, onDeleteCategory }: CategoriesPageProps) {
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.md;
   const [type, setType] = useState<TransactionType>("expense");
@@ -25,7 +25,7 @@ export function CategoriesPage({ month, categories, transactions, onAddCategory,
     for (const currentType of ["expense", "income"] as const) {
       for (const category of categories[currentType]) {
         const total = transactions.reduce((acc, tx) => {
-          if (tx.type !== currentType || tx.category !== category || !isDateInMonth(tx.date, month)) {
+          if (tx.type !== currentType || tx.category !== category || !isDateInPeriod(tx.date, period)) {
             return acc;
           }
           return acc + tx.amount;
@@ -41,7 +41,7 @@ export function CategoriesPage({ month, categories, transactions, onAddCategory,
     }
 
     return list.sort((a, b) => b.total - a.total || a.category.localeCompare(b.category));
-  }, [categories, transactions, month]);
+  }, [categories, transactions, period]);
 
   const add = () => {
     const ok = onAddCategory(type, name);
@@ -77,7 +77,7 @@ export function CategoriesPage({ month, categories, transactions, onAddCategory,
       </Row>
 
       <Typography.Title level={5} style={{ marginTop: 20 }}>
-        Категории за выбранный месяц
+        Категории за период
       </Typography.Title>
 
       <Table

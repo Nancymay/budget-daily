@@ -17,12 +17,12 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import type { Transaction, TransactionType } from "../types/models";
 import type { Dayjs } from "dayjs";
-import { getDaysInMonth, getDefaultDateForMonth } from "../lib/date";
+import { getDefaultDateForPeriod, isDateInPeriod, type Period } from "../lib/date";
 import { formatMoney } from "../lib/money";
 
 interface TransactionFormModalProps {
   open: boolean;
-  month: string;
+  period: Period;
   categories: Record<TransactionType, string[]>;
   initial: Transaction | null;
   onClose: () => void;
@@ -49,13 +49,13 @@ function parseDateValue(input: string): Dayjs | null {
   return value.isValid() ? value : null;
 }
 
-function lastDayOfMonth(date: string): string {
-  const days = getDaysInMonth(date.slice(0, 7));
-  return days[days.length - 1] ?? date;
+// By default a spread income lasts until the end of the pay period it arrives in.
+function defaultSpreadEnd(date: string, period: Period): string {
+  return isDateInPeriod(date, period) ? period.end : date;
 }
 
 function getInitialState(
-  month: string,
+  period: Period,
   initial: Transaction | null,
   categories: Record<TransactionType, string[]>
 ): FormState {
@@ -74,11 +74,11 @@ function getInitialState(
       note: initial.note ?? "",
       spreadEnabled: Boolean(spread?.enabled),
       spreadStart: spread?.startDate ?? initial.date,
-      spreadEnd: spread?.endDate ?? lastDayOfMonth(initial.date)
+      spreadEnd: spread?.endDate ?? defaultSpreadEnd(initial.date, period)
     };
   }
 
-  const date = getDefaultDateForMonth(month);
+  const date = getDefaultDateForPeriod(period);
   return {
     type,
     date,
@@ -88,7 +88,7 @@ function getInitialState(
     note: "",
     spreadEnabled: false,
     spreadStart: date,
-    spreadEnd: lastDayOfMonth(date)
+    spreadEnd: defaultSpreadEnd(date, period)
   };
 }
 
@@ -98,23 +98,23 @@ function countDays(start: string, end: string): number {
 
 export function TransactionFormModal({
   open,
-  month,
+  period,
   categories,
   initial,
   onClose,
   onSubmit
 }: TransactionFormModalProps) {
-  const [form, setForm] = useState<FormState>(() => getInitialState(month, initial, categories));
+  const [form, setForm] = useState<FormState>(() => getInitialState(period, initial, categories));
   const [error, setError] = useState<string>("");
 
   useEffect(() => {
     if (open) {
-      setForm(getInitialState(month, initial, categories));
+      setForm(getInitialState(period, initial, categories));
       setError("");
     }
     // categories are intentionally not a dependency: re-initialising the form
     // when a category is added elsewhere would wipe what the user typed.
-  }, [open, month, initial]);
+  }, [open, period, initial]);
 
   const options = useMemo(() => categories[form.type], [categories, form.type]);
   const canSpread = form.type === "income";
@@ -223,7 +223,7 @@ export function TransactionFormModal({
                   setForm({
                     ...form,
                     date,
-                    ...(followSpread ? { spreadStart: date, spreadEnd: lastDayOfMonth(date) } : {})
+                    ...(followSpread ? { spreadStart: date, spreadEnd: defaultSpreadEnd(date, period) } : {})
                   });
                 }}
                 format="DD/MM/YYYY"
