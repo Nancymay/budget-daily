@@ -17,8 +17,8 @@ export default defineConfig(({ mode }) => {
           name: "Budget Daily",
           short_name: "BudgetDaily",
           description: "Offline-first budget planner with daily balance forecast",
-          theme_color: "#0f1218",
-          background_color: "#0f1218",
+          theme_color: "#f4f3f8",
+          background_color: "#f4f3f8",
           display: "standalone",
           start_url: ".",
           icons: [
@@ -38,7 +38,19 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
-          cleanupOutdatedCaches: true
+          cleanupOutdatedCaches: true,
+          // Cache the web fonts after the first online visit so the app keeps its look offline.
+          runtimeCaching: [
+            {
+              urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
+              handler: "CacheFirst",
+              options: {
+                cacheName: "google-fonts",
+                expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 365 },
+                cacheableResponse: { statuses: [0, 200] }
+              }
+            }
+          ]
         }
       })
     ]

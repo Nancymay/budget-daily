@@ -1,5 +1,14 @@
 import { getPeriodFor, getTodayISO } from "./date";
-import type { AppState, DistributionMode, IncomeSpread, OpeningBalance, Transaction, TransactionType } from "../types/models";
+import { isCategoryColor, isCategoryIcon } from "./categoryStyle";
+import type {
+  AppState,
+  CategoryStyle,
+  DistributionMode,
+  IncomeSpread,
+  OpeningBalance,
+  Transaction,
+  TransactionType
+} from "../types/models";
 
 const STORAGE_KEY = "budget-daily.v1";
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -44,6 +53,20 @@ function sanitizeLimits(input: unknown): Record<string, number> {
     const amount = Number(value);
     if (category.trim() && Number.isFinite(amount) && amount > 0) {
       result[category] = amount;
+    }
+  }
+  return result;
+}
+
+function sanitizeStyles(input: unknown): Record<string, CategoryStyle> {
+  if (typeof input !== "object" || input === null) {
+    return {};
+  }
+  const result: Record<string, CategoryStyle> = {};
+  for (const [category, value] of Object.entries(input)) {
+    const style = value as Partial<CategoryStyle> | null;
+    if (category.trim() && style && isCategoryIcon(style.icon) && isCategoryColor(style.color)) {
+      result[category] = { icon: style.icon, color: style.color };
     }
   }
   return result;
@@ -165,7 +188,8 @@ export function getDefaultState(): AppState {
       customCategories: {
         income: [],
         expense: []
-      }
+      },
+      categoryStyles: {}
     },
     transactions: []
   };
@@ -194,7 +218,8 @@ export function normalizeState(parsed: Partial<AppState>): AppState {
       customCategories: {
         income: sanitizeStringList(settings?.customCategories?.income),
         expense: sanitizeStringList(settings?.customCategories?.expense)
-      }
+      },
+      categoryStyles: sanitizeStyles(settings?.categoryStyles)
     },
     transactions: sanitizeTransactions(parsed.transactions)
   };
