@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { getPeriodFor, getTodayISO, type Period } from "../lib/date";
 import { dayMonthShort, num, periodLabel } from "../lib/format";
 import { parseBackup } from "../lib/storage";
+import type { CloudSync } from "../lib/cloud";
+import { CloudSection } from "./CloudSection";
 import { Icon, UI_ICONS } from "./ui/Icon";
 import { Sheet } from "./ui/Sheet";
 import type { AppState, PeriodMode } from "../types/models";
@@ -17,6 +19,7 @@ interface SettingsSheetProps {
   onPeriodModeChange: (mode: PeriodMode) => void;
   onPayDaysChange: (payDays: number[]) => void;
   onRestore: (state: AppState) => void;
+  cloud: CloudSync;
 }
 
 function downloadJson(data: unknown, filename: string): void {
@@ -40,7 +43,8 @@ export function SettingsSheet({
   onStartBalanceChange,
   onPeriodModeChange,
   onPayDaysChange,
-  onRestore
+  onRestore,
+  cloud
 }: SettingsSheetProps) {
   const { message, modal } = App.useApp();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -108,6 +112,8 @@ export function SettingsSheet({
 
   return (
     <Sheet open={open} title="Настройки" onClose={onClose}>
+      <CloudSection cloud={cloud} />
+
       <div className="field">
         <span className="field-caption">Как считать период</span>
         {modeCard("pay", "От зарплаты до зарплаты", payPeriod)}
