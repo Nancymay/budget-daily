@@ -88,6 +88,33 @@ function describeError(error: unknown): string {
   return message;
 }
 
+export interface AuthResult {
+  error?: string;
+  info?: string;
+}
+
+function describeAuthError(message: string): string {
+  if (/invalid login credentials/i.test(message)) {
+    return "Неверная почта или пароль";
+  }
+  if (/not confirmed/i.test(message)) {
+    return "Почта ещё не подтверждена — нажми ссылку в письме от Supabase";
+  }
+  if (/already registered|already exists/i.test(message)) {
+    return "Такой аккаунт уже есть — нажми «Войти»";
+  }
+  if (/password/i.test(message) && /least|short|characters/i.test(message)) {
+    return "Пароль слишком короткий — нужно минимум 6 символов";
+  }
+  if (/rate|seconds|too many/i.test(message)) {
+    return "Слишком много попыток — подожди минуту";
+  }
+  if (/signups? not allowed|disabled/i.test(message)) {
+    return "Регистрация новых аккаунтов выключена";
+  }
+  return describeError(message);
+}
+
 export type CloudStatus = "signedOut" | "syncing" | "synced" | "offline" | "error";
 
 export interface CloudSync {
@@ -95,8 +122,8 @@ export interface CloudSync {
   status: CloudStatus;
   lastSyncedAt: Date | null;
   error: string;
-  sendCode: (email: string) => Promise<string | null>;
-  verifyCode: (email: string, code: string) => Promise<string | null>;
+  signIn: (email: string, password: string) => Promise<AuthResult>;
+  signUp: (email: string, password: string) => Promise<AuthResult>;
   signOut: () => Promise<void>;
   syncNow: () => void;
 }
@@ -210,26 +237,22 @@ export function useCloudSync(state: AppState, setState: Dispatch<SetStateAction<
     };
   }, [sync]);
 
-  const sendCode = useCallback(async (email: string) => {
-    const { error: err } = await supabase.auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser: true, emailRedirectTo: `${window.location.origin}${import.meta.env.BASE_URL}` }
-    });
-    if (!err) {
-      return null;
-    }
-    if (/rate|seconds/i.test(err.message)) {
-      return "Слишком часто — подожди минуту и попробуй снова";
-    }
-    return describeError(err);
+  const signIn = useCallback(async (email: string, password: string): Promise<AuthResult> => {
+    const { error: err } = await supabase.auth.signInWithPassword({ email, password });
+    return err ? { error: describeAuthError(err.message) } : {};
   }, []);
 
-  const verifyCode = useCallback(async (email: string, code: string) => {
-    const { error: err } = await supabase.auth.verifyOtp({ email, token: code, type: "email" });
-    if (!err) {
-      return null;
+  const signUp = useCallback(async (email: string, password: string): Promise<AuthResult> => {
+    const { data, error: err } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: `${window.location.origin}${import.meta.env.BASE_URL}` }
+    });
+    if (err) {
+      return { error: describeAuthError(err.message) };
     }
-    return /fetch|network/i.test(err.message) ? describeError(err) : "Код не подошёл или устарел — запроси новый";
+    // With "Confirm email" on, Supabase sends a link first and gives no session yet.
+    return data.session ? {} : { info: "Мы отправили письмо — подтверди почту по ссылке, потом вернись сюда и нажми «Войти»." };
   }, []);
 
   const signOut = useCallback(async () => {
@@ -239,5 +262,5 @@ export function useCloudSync(state: AppState, setState: Dispatch<SetStateAction<
     setError("");
   }, []);
 
-  return { user, status, lastSyncedAt, error, sendCode, verifyCode, signOut, syncNow: () => void sync() };
+  return { user, status, lastSyncedAt, error, signIn, signUp, signOut, syncNow: () => void sync() };
 }

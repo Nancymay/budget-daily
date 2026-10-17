@@ -1907,3 +1907,11 @@ button {
   opacity: 0.6;
   cursor: default;
 }
+
+.cloud-info {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}

@@ -10,10 +10,10 @@ function timeLabel(date: Date): string {
 
 export function CloudSection({ cloud }: { cloud: CloudSync }) {
   const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
-  const [step, setStep] = useState<"email" | "code">("email");
+  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
 
   if (cloud.user) {
     const statusText = {
@@ -51,97 +51,76 @@ export function CloudSection({ cloud }: { cloud: CloudSync }) {
     );
   }
 
-  const send = async () => {
-    const clean = email.trim();
-    if (!/^\S+@\S+\.\S+$/.test(clean)) {
+  const run = async (action: "signIn" | "signUp") => {
+    const cleanEmail = email.trim();
+    if (!/^\S+@\S+\.\S+$/.test(cleanEmail)) {
       setError("Введите почту");
       return;
     }
-    setBusy(true);
-    const result = await cloud.sendCode(clean);
-    setBusy(false);
-    if (result) {
-      setError(result);
-    } else {
-      setError("");
-      setStep("code");
-    }
-  };
-
-  const verify = async () => {
-    const clean = code.replace(/\D/g, "");
-    if (clean.length < 6) {
-      setError("Введите код из письма");
+    if (password.length < 6) {
+      setError("Пароль — минимум 6 символов");
       return;
     }
     setBusy(true);
-    const result = await cloud.verifyCode(email.trim(), clean);
+    setInfo("");
+    const result = await cloud[action](cleanEmail, password);
     setBusy(false);
-    setError(result ?? "");
+    setError(result.error ?? "");
+    setInfo(result.info ?? "");
+  };
+
+  const reset = () => {
+    setError("");
+    setInfo("");
   };
 
   return (
-    <div className="field">
+    <form
+      className="field"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void run("signIn");
+      }}
+    >
       <span className="field-caption">Облако</span>
-      {step === "email" ? (
-        <>
-          <span className="field-hint">Войди по почте, чтобы данные хранились в облаке и были на всех твоих устройствах.</span>
-          <span className="input-wrap">
-            <input
-              type="email"
-              inputMode="email"
-              autoComplete="email"
-              aria-label="Почта"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(event) => {
-                setEmail(event.target.value);
-                setError("");
-              }}
-              onKeyDown={(event) => event.key === "Enter" && void send()}
-            />
-          </span>
-          <button type="button" className="soft-btn soft-btn--accent" onClick={() => void send()} disabled={busy}>
-            {busy ? "Отправляю…" : "Получить код для входа"}
-          </button>
-        </>
-      ) : (
-        <>
-          <span className="field-hint">
-            Код отправлен на {email.trim()}. Введи его здесь — так вход сработает и в приложении на экране «Домой».
-          </span>
-          <span className="input-wrap">
-            <input
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              aria-label="Код из письма"
-              placeholder="Код из письма"
-              maxLength={10}
-              value={code}
-              onChange={(event) => {
-                setCode(event.target.value.replace(/\D/g, ""));
-                setError("");
-              }}
-              onKeyDown={(event) => event.key === "Enter" && void verify()}
-            />
-          </span>
-          <button type="button" className="soft-btn soft-btn--accent" onClick={() => void verify()} disabled={busy}>
-            {busy ? "Проверяю…" : "Войти"}
-          </button>
-          <button
-            type="button"
-            className="link-btn"
-            onClick={() => {
-              setStep("email");
-              setCode("");
-              setError("");
-            }}
-          >
-            Другая почта или отправить код ещё раз
-          </button>
-        </>
-      )}
+      <span className="field-hint">Войди, чтобы данные хранились в облаке и были на всех твоих устройствах.</span>
+      <span className="input-wrap">
+        <input
+          type="email"
+          inputMode="email"
+          autoComplete="email"
+          aria-label="Почта"
+          placeholder="Почта"
+          value={email}
+          onChange={(event) => {
+            setEmail(event.target.value);
+            reset();
+          }}
+        />
+      </span>
+      <span className="input-wrap">
+        <input
+          type="password"
+          autoComplete="current-password"
+          aria-label="Пароль"
+          placeholder="Пароль, от 6 символов"
+          value={password}
+          onChange={(event) => {
+            setPassword(event.target.value);
+            reset();
+          }}
+        />
+      </span>
+      <div className="cloud-actions">
+        <button type="submit" className="soft-btn soft-btn--accent" disabled={busy}>
+          Войти
+        </button>
+        <button type="button" className="soft-btn" disabled={busy} onClick={() => void run("signUp")}>
+          Создать аккаунт
+        </button>
+      </div>
       {error && <p className="form-error">{error}</p>}
-    </div>
+      {info && <p className="field-hint cloud-info">{info}</p>}
+    </form>
   );
 }
