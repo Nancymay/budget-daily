@@ -175,10 +175,12 @@ export function TransactionSheet({ open, period, categories, styles, initial, on
           Сумма
         </label>
         <div className="amount-row">
+          {/* The hidden copy of the text sizes the field exactly to what is typed. */}
+          <span className={`amount-field${form.type === "income" ? " is-income" : ""}`} data-value={amountText}>
           <input
             id="tx-amount"
-            className={`amount-input${form.type === "income" ? " is-income" : ""}`}
-            style={{ width: `${Math.max(1, amountText.length) + 0.4}ch` }}
+            className="amount-input"
+            size={1}
             inputMode="decimal"
             autoFocus={!initial}
             placeholder="0"
@@ -186,6 +188,7 @@ export function TransactionSheet({ open, period, categories, styles, initial, on
             onChange={(event) => set({ amount: groupTypedAmount(event.target.value) })}
             onKeyDown={(event) => event.key === "Enter" && submit()}
           />
+          </span>
           <span className="amount-currency">₽</span>
         </div>
       </div>

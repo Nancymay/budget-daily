@@ -1238,6 +1238,11 @@ button {
   overscroll-behavior: contain;
 }
 
+/* The body scrolls instead of squeezing its children (iOS shrank buttons to a sliver). */
+.sheet-body > * {
+  flex-shrink: 0;
+}
+
 .sheet-foot {
   padding: 12px 16px calc(16px + env(safe-area-inset-bottom));
   border-top: 1px solid var(--line);
@@ -1346,21 +1351,39 @@ button {
   max-width: 100%;
 }
 
-.amount-input {
-  min-width: 1.4ch;
+.amount-field {
+  display: inline-grid;
   max-width: calc(100vw - 100px);
-  border: 0;
-  outline: 0;
-  background: transparent;
-  padding: 0;
-  text-align: center;
   font-family: var(--display);
   font-weight: 700;
   font-size: 46px;
   letter-spacing: -0.03em;
 }
 
-.amount-input.is-income {
+.amount-field::after,
+.amount-input {
+  grid-area: 1 / 1;
+  font: inherit;
+  letter-spacing: inherit;
+  padding: 0 2px;
+  min-width: 1ch;
+}
+
+.amount-field::after {
+  content: attr(data-value);
+  visibility: hidden;
+  white-space: pre;
+}
+
+.amount-input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  text-align: center;
+}
+
+.amount-field.is-income .amount-input {
   color: var(--green);
 }
 
