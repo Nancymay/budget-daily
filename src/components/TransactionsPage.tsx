@@ -1,142 +1,166 @@
-import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
-import { Button, Card, Col, Popconfirm, Row, Select, Space, Switch, Tag, Typography } from "antd";
 import { useMemo, useState } from "react";
-import { formatMoney } from "../lib/money";
-import { toHumanDate, toHumanDayMonth, transactionTouchesPeriod, type Period } from "../lib/date";
-import type { Transaction, TransactionType } from "../types/models";
+import { getTodayISO, toWeekday, transactionTouchesPeriod, type Period } from "../lib/date";
+import { dayMonthShort, num, signedRub } from "../lib/format";
+import { resolveCategoryStyle } from "../lib/categoryStyle";
+import { CategoryBadge } from "./ui/CategoryBadge";
+import { Icon, UI_ICONS } from "./ui/Icon";
+import type { CategoryStyle, Transaction, TransactionType } from "../types/models";
 
 interface TransactionsPageProps {
   period: Period;
   transactions: Transaction[];
   categories: Record<TransactionType, string[]>;
-  onAdd: () => void;
+  styles: Record<string, CategoryStyle>;
   onEdit: (id: string) => void;
-  onDelete: (id: string) => void;
 }
 
-export function TransactionsPage({ period, transactions, categories, onAdd, onEdit, onDelete }: TransactionsPageProps) {
-  const [typeFilter, setTypeFilter] = useState<"all" | TransactionType>("all");
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [allMonths, setAllMonths] = useState(false);
+type TypeFilter = "all" | TransactionType;
 
-  const availableCategories = useMemo(() => {
-    if (typeFilter === "all") {
-      return [...new Set([...categories.income, ...categories.expense])];
-    }
-    return categories[typeFilter];
-  }, [categories, typeFilter]);
+function groupLabel(date: string): string {
+  if (date === getTodayISO()) {
+    return `Сегодня, ${dayMonthShort(date)}`;
+  }
+  return `${dayMonthShort(date)}, ${toWeekday(date)}`;
+}
+
+export function TransactionsPage({ period, transactions, categories, styles, onEdit }: TransactionsPageProps) {
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [allPeriods, setAllPeriods] = useState(false);
+  const [query, setQuery] = useState("");
+
+  const availableCategories = useMemo(
+    () => (typeFilter === "all" ? [...new Set([...categories.expense, ...categories.income])] : categories[typeFilter]),
+    [categories, typeFilter]
+  );
 
   const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
     return transactions
-      .filter((tx) => allMonths || transactionTouchesPeriod(tx, period))
-      .filter((tx) => (typeFilter === "all" ? true : tx.type === typeFilter))
-      .filter((tx) => (categoryFilter === "all" ? true : tx.category === categoryFilter))
+      .filter((tx) => allPeriods || transactionTouchesPeriod(tx, period))
+      .filter((tx) => typeFilter === "all" || tx.type === typeFilter)
+      .filter((tx) => categoryFilter === "all" || tx.category === categoryFilter)
+      .filter((tx) => !q || tx.category.toLowerCase().includes(q) || (tx.note ?? "").toLowerCase().includes(q))
       .sort((a, b) => b.date.localeCompare(a.date));
-  }, [transactions, typeFilter, categoryFilter, allMonths, period]);
+  }, [transactions, typeFilter, categoryFilter, allPeriods, period, query]);
 
   const totals = useMemo(
     () =>
       filtered.reduce(
         (acc, tx) => {
           acc[tx.type] += tx.amount;
+          acc.count[tx.type] += 1;
           return acc;
         },
-        { income: 0, expense: 0 }
+        { income: 0, expense: 0, count: { income: 0, expense: 0 } }
       ),
     [filtered]
   );
 
-  return (
-    <Card>
-      <Row gutter={[12, 12]} align="bottom" className="toolbar-row">
-        <Col xs={12} sm={7}>
-          <label className="field-label">Тип</label>
-          <Select
-            value={typeFilter}
-            onChange={(value) => {
-              setTypeFilter(value);
-              setCategoryFilter("all");
-            }}
-            style={{ width: "100%" }}
-            options={[
-              { value: "all", label: "Все" },
-              { value: "income", label: "Доходы" },
-              { value: "expense", label: "Расходы" }
-            ]}
-          />
-        </Col>
-        <Col xs={12} sm={9}>
-          <label className="field-label">Категория</label>
-          <Select
-            value={categoryFilter}
-            onChange={(value) => setCategoryFilter(value)}
-            style={{ width: "100%" }}
-            options={[{ value: "all", label: "Все" }, ...availableCategories.map((item) => ({ value: item, label: item }))]}
-          />
-        </Col>
-        <Col xs={24} sm={8}>
-          <Button type="primary" icon={<PlusOutlined />} onClick={onAdd} block>
-            Добавить
-          </Button>
-        </Col>
-      </Row>
+  const groups = useMemo(() => {
+    const map = new Map<string, Transaction[]>();
+    for (const tx of filtered) {
+      map.set(tx.date, [...(map.get(tx.date) ?? []), tx]);
+    }
+    return [...map.entries()].map(([date, items]) => ({
+      date,
+      items,
+      net: items.reduce((acc, tx) => acc + (tx.type === "income" ? tx.amount : -tx.amount), 0)
+    }));
+  }, [filtered]);
 
-      <div className="tx-summary">
-        <Space size={6}>
-          <Switch size="small" checked={allMonths} onChange={setAllMonths} />
-          <Typography.Text type="secondary">Все периоды</Typography.Text>
-        </Space>
-        <Typography.Text type="secondary">
-          {filtered.length} шт.
-          {totals.income > 0 && <> · <span className="amount-income">+{formatMoney(totals.income)}</span></>}
-          {totals.expense > 0 && <> · <span className="amount-expense">−{formatMoney(totals.expense)}</span></>}
-        </Typography.Text>
+  const chip = (value: TypeFilter, label: string) => (
+    <button
+      type="button"
+      className={`chip${typeFilter === value ? " is-active" : ""}`}
+      aria-pressed={typeFilter === value}
+      onClick={() => {
+        setTypeFilter(value);
+        setCategoryFilter("all");
+      }}
+    >
+      {label}
+    </button>
+  );
+
+  return (
+    <div className="page">
+      <label className="search">
+        <Icon path={UI_ICONS.search} size={18} color="var(--muted)" />
+        <span className="sr-only">Поиск по операциям</span>
+        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Поиск по заметкам и категориям" />
+      </label>
+
+      <div className="chips">
+        {chip("all", "Все")}
+        {chip("expense", "Расходы")}
+        {chip("income", "Доходы")}
+        <label className={`chip chip--select${categoryFilter !== "all" ? " is-active" : ""}`}>
+          <span className="sr-only">Категория</span>
+          <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+            <option value="all">Категория</option>
+            {availableCategories.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
+          <Icon path={UI_ICONS.down} size={14} strokeWidth={2.6} />
+        </label>
+        <button
+          type="button"
+          className={`chip${allPeriods ? " is-active" : ""}`}
+          aria-pressed={allPeriods}
+          onClick={() => setAllPeriods((value) => !value)}
+        >
+          Все периоды
+        </button>
       </div>
 
-      <Space direction="vertical" style={{ width: "100%", marginTop: 12 }} size={10}>
-        {filtered.map((tx) => (
-          <Card key={tx.id} size="small" className="tx-item">
-            <Row justify="space-between" align="middle" gutter={[8, 8]}>
-              <Col xs={24} md={16}>
-                <Space size={8} wrap>
-                  <Tag color={tx.type === "income" ? "green" : "red"}>{tx.type === "income" ? "Доход" : "Расход"}</Tag>
-                  <Tag>{toHumanDate(tx.date)}</Tag>
-                  <Tag>{tx.category}</Tag>
-                  {tx.spread?.enabled && (
-                    <Tag color="blue">
-                      по дням {toHumanDayMonth(tx.spread.startDate)}–{toHumanDayMonth(tx.spread.endDate)}
-                    </Tag>
-                  )}
-                </Space>
-                <Typography.Title level={5} style={{ margin: "8px 0 0" }}>
-                  {formatMoney(tx.amount)}
-                </Typography.Title>
-                {tx.note && (
-                  <Typography.Text type="secondary" style={{ display: "block" }}>
-                    {tx.note}
-                  </Typography.Text>
-                )}
-              </Col>
-              <Col xs={24} md={8}>
-                <Space>
-                  <Button icon={<EditOutlined />} onClick={() => onEdit(tx.id)}>
-                    Изменить
-                  </Button>
-                  <Popconfirm title="Удалить транзакцию?" onConfirm={() => onDelete(tx.id)} okText="Удалить" cancelText="Отмена">
-                    <Button icon={<DeleteOutlined />}>Удалить</Button>
-                  </Popconfirm>
-                </Space>
-              </Col>
-            </Row>
-          </Card>
-        ))}
+      <div className="tiles tiles--two">
+        <div className="tile tile--green">
+          <span className="tile-label">Пришло</span>
+          <span className="tile-value">+{num(totals.income)} ₽</span>
+        </div>
+        <div className="tile tile--red">
+          <span className="tile-label">Ушло · {totals.count.expense} шт.</span>
+          <span className="tile-value">−{num(totals.expense)} ₽</span>
+        </div>
+      </div>
 
-        {filtered.length === 0 && (
-          <Typography.Text type="secondary">
-            {allMonths ? "Транзакций по фильтру нет." : "В этом периоде транзакций по фильтру нет."}
-          </Typography.Text>
-        )}
-      </Space>
-    </Card>
+      {groups.map((group) => (
+        <section key={group.date} className="tx-group">
+          <div className="tx-group-head">
+            <span className="tx-group-label">{groupLabel(group.date)}</span>
+            <span className="tx-group-total">
+              {group.net >= 0 ? "+" : "−"}
+              {num(Math.abs(group.net))} ₽
+            </span>
+          </div>
+          <div className="card card--list">
+            {group.items.map((tx) => {
+              const look = resolveCategoryStyle(tx.category, tx.type, styles);
+              const sub = tx.spread?.enabled
+                ? `по дням ${dayMonthShort(tx.spread.startDate)} – ${dayMonthShort(tx.spread.endDate)}`
+                : tx.note || (tx.type === "income" ? "Доход" : "Расход");
+              return (
+                <button key={tx.id} type="button" className="tx" onClick={() => onEdit(tx.id)}>
+                  <CategoryBadge look={look} />
+                  <span className="tx-text">
+                    <span className="tx-cat">{tx.category}</span>
+                    <span className="tx-note">{sub}</span>
+                  </span>
+                  <span className={`tx-amount${tx.type === "income" ? " is-income" : ""}`}>{signedRub(tx.amount, tx.type)}</span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      ))}
+
+      {groups.length === 0 && (
+        <p className="empty">{allPeriods ? "Операций по фильтру нет." : "В этом периоде операций по фильтру нет."}</p>
+      )}
+    </div>
   );
 }

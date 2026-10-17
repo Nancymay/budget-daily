@@ -42,6 +42,13 @@ export interface Settings {
   opening: OpeningBalance;
   distribution: DistributionSettings;
   customCategories: Record<TransactionType, string[]>;
+  /** Icon and color chosen for a category, by category name. Missing ones get a default look. */
+  categoryStyles: Record<string, CategoryStyle>;
+}
+
+export interface CategoryStyle {
+  icon: string;
+  color: string;
 }
 
 export interface AppState {
