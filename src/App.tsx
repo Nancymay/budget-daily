@@ -12,6 +12,7 @@ import { balanceAt, buildForecast } from "./lib/finance";
 import { getPeriodFor, getTodayISO, shiftPeriod, type Period } from "./lib/date";
 import { periodLabel, periodLabelShort } from "./lib/format";
 import { getBaseCategories, loadState, saveState } from "./lib/storage";
+import { useCloudSync } from "./lib/cloud";
 import type { AppState, DistributionSettings, PeriodMode, Settings, Transaction, TransactionType } from "./types/models";
 
 const baseCategories = getBaseCategories();
@@ -58,6 +59,8 @@ export default function App() {
   useEffect(() => {
     saveState(state);
   }, [state]);
+
+  const cloud = useCloudSync(state, setState);
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
@@ -276,8 +279,9 @@ export default function App() {
                     </span>
                     <span className="brand-name">Budget Daily</span>
                   </div>
-                  <button type="button" className="icon-btn" aria-label="Меню и настройки" onClick={() => setSettingsOpen(true)}>
+                  <button type="button" className="icon-btn icon-btn--status" aria-label="Меню и настройки" onClick={() => setSettingsOpen(true)}>
                     <DotsIcon />
+                    {cloud.user && <span className={`status-dot is-${cloud.status}`} aria-hidden="true" />}
                   </button>
                 </header>
                 <div className="period-nav">
@@ -400,6 +404,7 @@ export default function App() {
           onPeriodModeChange={setPeriodMode}
           onPayDaysChange={setPayDays}
           onRestore={restoreState}
+          cloud={cloud}
         />
       </AntApp>
     </ConfigProvider>

@@ -1818,3 +1818,92 @@ button {
 .menu-text .warn-text {
   color: var(--red-fg);
 }
+
+/* ---------- cloud ---------- */
+
+.icon-btn--status {
+  position: relative;
+}
+
+.status-dot {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--surface);
+  background: #b9b6c6;
+}
+
+.status-dot.is-synced {
+  background: #18a058;
+}
+.status-dot.is-syncing {
+  background: var(--accent);
+}
+.status-dot.is-error {
+  background: var(--danger);
+}
+
+.cloud-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 22px;
+  background: var(--bg);
+  min-width: 0;
+}
+
+.cloud-card .menu-text {
+  min-width: 0;
+}
+
+.cloud-card strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cloud-icon {
+  background: #e4e2ec;
+  color: var(--muted);
+}
+.cloud-icon.is-synced {
+  background: var(--green-bg);
+  color: var(--green);
+}
+.cloud-icon.is-syncing {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.cloud-icon.is-error {
+  background: var(--red-bg);
+  color: var(--red-fg);
+}
+
+.cloud-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.soft-btn {
+  height: 48px;
+  border-radius: 16px;
+  border: 0;
+  background: var(--bg);
+  font-weight: 800;
+  font-size: 15px;
+}
+
+.soft-btn--accent {
+  background: var(--accent);
+  color: #fff;
+}
+
+.soft-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
