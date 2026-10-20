@@ -885,6 +885,50 @@ button {
   font-weight: 800;
 }
 
+.banner--button {
+  width: 100%;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.banner--button:active {
+  filter: brightness(0.96);
+}
+
+.banner--button .banner-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.banner--button .banner-text > span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.banner-chevron {
+  flex: none;
+  display: flex;
+}
+
+.over-row {
+  gap: 10px;
+}
+
+.over-extra {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--danger);
+  white-space: nowrap;
+}
+
+.over-hint {
+  margin: 0;
+  text-align: center;
+}
+
 .cat {
   padding: 16px;
   display: flex;
