@@ -1,10 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { isDateInPeriod, type Period } from "../lib/date";
 import { getLimitStatus, limitForPeriod, type LimitStatus } from "../lib/limits";
 import { num, periodLabelShort, plural } from "../lib/format";
 import { resolveCategoryStyle } from "../lib/categoryStyle";
 import { CategoryBadge } from "./ui/CategoryBadge";
 import { Icon, UI_ICONS } from "./ui/Icon";
+import { Sheet } from "./ui/Sheet";
 import type { CategoryStyle, PeriodMode, Transaction, TransactionType } from "../types/models";
 
 interface CategoriesPageProps {
@@ -70,6 +71,9 @@ export function CategoriesPage({
   }, [categories, type, totals, limits, period]);
 
   const over = rows.filter((row) => row.status === "over");
+  const overSorted = [...over].sort((a, b) => b.total - (b.limit ?? 0) - (a.total - (a.limit ?? 0)));
+  const overTotal = over.reduce((acc, row) => acc + row.total - (row.limit ?? 0), 0);
+  const [overOpen, setOverOpen] = useState(false);
 
   return (
     <div className="page">
@@ -83,7 +87,12 @@ export function CategoriesPage({
       </div>
 
       {type === "expense" && over.length > 0 && (
-        <div className="banner">
+        <button
+          type="button"
+          className="banner banner--button"
+          aria-label={`Превышено лимитов: ${over.length}. Показать список`}
+          onClick={() => setOverOpen(true)}
+        >
           <span className="banner-icon">
             <Icon path={UI_ICONS.alert} color="#FFFFFF" strokeWidth={2.4} />
           </span>
@@ -99,8 +108,50 @@ export function CategoriesPage({
               {over.length > 2 ? "…" : " сверх плана на период"}
             </span>
           </span>
-        </div>
+          <span className="banner-chevron">
+            <Icon path={UI_ICONS.right} size={18} color="#FFFFFF" strokeWidth={2.8} />
+          </span>
+        </button>
       )}
+
+      <Sheet open={overOpen && over.length > 0} title="Превышенные лимиты" onClose={() => setOverOpen(false)}>
+        <div className="details">
+          <div className="tile tile--red">
+            <span className="tile-label">Сверх лимитов за {periodLabelShort(period)}</span>
+            <span className="tile-value">+{num(overTotal)} ₽</span>
+            <span className="tile-sub">
+              {over.length} {plural(over.length, "категория", "категории", "категорий")}
+            </span>
+          </div>
+          <div className="card card--list">
+            {overSorted.map((row) => {
+              const extra = row.total - (row.limit ?? 0);
+              return (
+                <button
+                  key={row.category}
+                  type="button"
+                  className="tx over-row"
+                  onClick={() => {
+                    setOverOpen(false);
+                    onDetails("expense", row.category);
+                  }}
+                >
+                  <CategoryBadge look={resolveCategoryStyle(row.category, "expense", styles)} />
+                  <span className="tx-text">
+                    <span className="tx-cat">{row.category}</span>
+                    <span className="tx-note">
+                      {num(row.total)} ₽ из {num(row.limit ?? 0)} ₽
+                    </span>
+                  </span>
+                  <span className="over-extra">+{num(extra)} ₽</span>
+                  <Icon path={UI_ICONS.right} size={16} strokeWidth={2.6} color="var(--muted)" />
+                </button>
+              );
+            })}
+          </div>
+          <p className="section-hint over-hint">Нажмите на категорию, чтобы посмотреть её операции.</p>
+        </div>
+      </Sheet>
 
       <div className="section-head">
         <h2 className="section-title">{type === "expense" ? "Расходы и лимиты" : "Источники дохода"}</h2>
