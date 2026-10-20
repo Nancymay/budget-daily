@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
       react(),
       VitePWA({
         registerType: "autoUpdate",
-        includeAssets: ["icons/icon.svg", "icons/icon-maskable.svg"],
+        includeAssets: ["icons/*.svg", "icons/*.png"],
         manifest: {
           name: "Budget Daily",
           short_name: "BudgetDaily",
@@ -22,6 +22,9 @@ export default defineConfig(({ mode }) => {
           display: "standalone",
           start_url: ".",
           icons: [
+            { src: "icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+            { src: "icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+            { src: "icons/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
             {
               src: "icons/icon.svg",
               sizes: "512x512",
