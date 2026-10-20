@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react";
 import { getTodayISO, toWeekday, transactionTouchesPeriod, type Period } from "../lib/date";
-import { dayMonthShort, num, signedRub } from "../lib/format";
-import { resolveCategoryStyle } from "../lib/categoryStyle";
-import { CategoryBadge } from "./ui/CategoryBadge";
+import { dayMonthShort, num } from "../lib/format";
+import { TxRow } from "./ui/TxRow";
 import { Icon, UI_ICONS } from "./ui/Icon";
 import type { CategoryStyle, Transaction, TransactionType } from "../types/models";
 
@@ -138,22 +137,9 @@ export function TransactionsPage({ period, transactions, categories, styles, onE
             </span>
           </div>
           <div className="card card--list">
-            {group.items.map((tx) => {
-              const look = resolveCategoryStyle(tx.category, tx.type, styles);
-              const sub = tx.spread?.enabled
-                ? `по дням ${dayMonthShort(tx.spread.startDate)} – ${dayMonthShort(tx.spread.endDate)}`
-                : tx.note || (tx.type === "income" ? "Доход" : "Расход");
-              return (
-                <button key={tx.id} type="button" className="tx" onClick={() => onEdit(tx.id)}>
-                  <CategoryBadge look={look} />
-                  <span className="tx-text">
-                    <span className="tx-cat">{tx.category}</span>
-                    <span className="tx-note">{sub}</span>
-                  </span>
-                  <span className={`tx-amount${tx.type === "income" ? " is-income" : ""}`}>{signedRub(tx.amount, tx.type)}</span>
-                </button>
-              );
-            })}
+            {group.items.map((tx) => (
+              <TxRow key={tx.id} tx={tx} styles={styles} onClick={() => onEdit(tx.id)} />
+            ))}
           </div>
         </section>
       ))}
