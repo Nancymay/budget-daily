@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
       react(),
       VitePWA({
         registerType: "autoUpdate",
-        includeAssets: ["icons/*.svg", "icons/*.png"],
+        includeAssets: ["favicon.ico", "icons/*.svg", "icons/*.png"],
         manifest: {
           name: "Budget Daily",
           short_name: "BudgetDaily",
