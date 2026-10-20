@@ -18,6 +18,7 @@ interface CategoriesPageProps {
   styles: Record<string, CategoryStyle>;
   onAdd: () => void;
   onEdit: (type: TransactionType, category: string) => void;
+  onDetails: (type: TransactionType, category: string) => void;
 }
 
 interface Row {
@@ -25,6 +26,10 @@ interface Row {
   total: number;
   limit: number | null;
   status: LimitStatus | null;
+}
+
+function countLabel(count: number): string {
+  return count === 0 ? "В периоде операций нет" : `${count} ${plural(count, "операция", "операции", "операций")} в периоде`;
 }
 
 export function CategoriesPage({
@@ -37,16 +42,19 @@ export function CategoriesPage({
   limits,
   styles,
   onAdd,
-  onEdit
+  onEdit,
+  onDetails
 }: CategoriesPageProps) {
   const totals = useMemo(() => {
     const result: Record<TransactionType, Map<string, number>> = { income: new Map(), expense: new Map() };
+    const counts: Record<TransactionType, Map<string, number>> = { income: new Map(), expense: new Map() };
     for (const tx of transactions) {
       if (isDateInPeriod(tx.date, period)) {
         result[tx.type].set(tx.category, (result[tx.type].get(tx.category) ?? 0) + tx.amount);
+        counts[tx.type].set(tx.category, (counts[tx.type].get(tx.category) ?? 0) + 1);
       }
     }
-    return result;
+    return Object.assign(result, { counts });
   }, [transactions, period]);
 
   const rows = useMemo<Row[]>(() => {
@@ -146,6 +154,18 @@ export function CategoriesPage({
                 <div className={`bar-fill is-${row.status}`} style={{ width: `${share}%` }} />
               </div>
             )}
+            <div className="cat-foot">
+              <span className="cat-count">{countLabel(totals.counts[type].get(row.category) ?? 0)}</span>
+              <button
+                type="button"
+                className="link-btn cat-more"
+                aria-label={`Подробнее: ${row.category}`}
+                onClick={() => onDetails(type, row.category)}
+              >
+                Подробнее
+                <Icon path={UI_ICONS.right} size={14} strokeWidth={2.8} />
+              </button>
+            </div>
           </div>
         );
       })}

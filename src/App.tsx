@@ -3,6 +3,7 @@ import { App as AntApp, ConfigProvider } from "antd";
 import { TodayPage } from "./components/TodayPage";
 import { TransactionsPage } from "./components/TransactionsPage";
 import { CategoriesPage } from "./components/CategoriesPage";
+import { CategoryDetailsSheet, type CategoryDetailsTarget } from "./components/CategoryDetailsSheet";
 import { SummaryPage } from "./components/SummaryPage";
 import { TransactionSheet } from "./components/TransactionSheet";
 import { CategorySheet, type CategoryDraft, type CategorySheetTarget } from "./components/CategorySheet";
@@ -53,6 +54,7 @@ export default function App() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [categoryTarget, setCategoryTarget] = useState<CategorySheetTarget | null>(null);
+  const [detailsTarget, setDetailsTarget] = useState<CategoryDetailsTarget | null>(null);
   const [categoryType, setCategoryType] = useState<TransactionType>("expense");
   const [period, setPeriod] = useState<Period>(() => getPeriodFor(getTodayISO(), periodDays(state.settings)));
 
@@ -352,6 +354,7 @@ export default function App() {
                 styles={categoryStyles}
                 onAdd={() => setCategoryTarget({ kind: "add", type: categoryType })}
                 onEdit={(type, name) => setCategoryTarget({ kind: "edit", type, name })}
+                onDetails={(type, name) => setDetailsTarget({ type, name })}
               />
             )}
             {view === "summary" && (
@@ -372,6 +375,20 @@ export default function App() {
           </nav>
         </div>
 
+        <CategoryDetailsSheet
+          target={detailsTarget}
+          // Hidden while one of its operations is being edited; reappears after.
+          open={detailsTarget !== null && !txSheetOpen}
+          period={period}
+          transactions={state.transactions}
+          limits={state.settings.categoryLimits}
+          styles={categoryStyles}
+          onClose={() => setDetailsTarget(null)}
+          onEditTransaction={(id) => {
+            setEditingId(id);
+            setTxSheetOpen(true);
+          }}
+        />
         <TransactionSheet
           open={txSheetOpen}
           period={period}

@@ -977,6 +977,43 @@ button {
   background: var(--danger);
 }
 
+.cat-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-top: -2px;
+}
+
+.cat-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.cat-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 32px;
+  padding: 0 4px;
+  font-size: 14px;
+}
+
+.details {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.details-list .tx-cat {
+  font-weight: 600;
+}
+
+.tx-cat.is-muted {
+  color: var(--muted);
+}
+
 .dashed-btn {
   height: 56px;
   border-radius: 20px;
