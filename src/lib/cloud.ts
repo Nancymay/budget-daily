@@ -77,13 +77,33 @@ async function pushRows(userId: string, rows: PushRow[]): Promise<void> {
   }
 }
 
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : typeof error === "object" && error && "message" in error ? String((error as { message: unknown }).message) : String(error);
+}
+
+/**
+ * The request never reached the server. Each browser words this differently:
+ * Chrome "Failed to fetch", Safari "Load failed" / "The network connection was lost",
+ * Firefox "NetworkError when attempting to fetch resource".
+ */
+export function isNetworkError(error: unknown): boolean {
+  return /failed to fetch|load failed|networkerror|network connection was lost|network request failed|internet connection appears to be offline|timed? ?out|cancelled/i.test(
+    errorMessage(error)
+  );
+}
+
+/** Delays before retrying a sync that failed on the network (iOS often drops the first requests after resume). */
+const RETRY_DELAYS_MS = [2000, 5000, 15000];
+/** Give the network a moment after the app comes back from the background. */
+const RESUME_DELAY_MS = 1200;
+
 function describeError(error: unknown): string {
-  const message = error instanceof Error ? error.message : typeof error === "object" && error && "message" in error ? String((error as { message: unknown }).message) : String(error);
+  const message = errorMessage(error);
+  if (isNetworkError(message)) {
+    return "Не удалось связаться с сервером — проверь интернет";
+  }
   if (/permission denied|does not exist|42501|42P01|PGRST/i.test(message)) {
     return "Нет доступа к таблице в Supabase — проверь SQL из настройки";
-  }
-  if (/fetch|network|Failed to/i.test(message)) {
-    return "Не удалось связаться с сервером";
   }
   return message;
 }
@@ -141,6 +161,8 @@ export function useCloudSync(state: AppState, setState: Dispatch<SetStateAction<
   const running = useRef(false);
   const again = useRef(false);
   const lastPushed = useRef<AppState | null>(null);
+  const retryAttempt = useRef(0);
+  const retryTimer = useRef<number | undefined>(undefined);
 
   const sync = useCallback(async () => {
     const current = userRef.current;
@@ -185,14 +207,26 @@ export function useCloudSync(state: AppState, setState: Dispatch<SetStateAction<
       setError("");
       setStatus("synced");
       setLastSyncedAt(new Date());
+      retryAttempt.current = 0;
     } catch (err) {
       const offline = typeof navigator !== "undefined" && !navigator.onLine;
-      setStatus(offline ? "offline" : "error");
-      setError(offline ? "" : describeError(err));
+      const delay = RETRY_DELAYS_MS[retryAttempt.current];
+      if (!offline && isNetworkError(err) && delay !== undefined) {
+        // A blip, not a real error yet: stay in "syncing" and quietly try again.
+        retryAttempt.current += 1;
+        window.clearTimeout(retryTimer.current);
+        retryTimer.current = window.setTimeout(() => void syncRef.current(), delay);
+      } else {
+        retryAttempt.current = 0;
+        setStatus(offline ? "offline" : "error");
+        setError(offline ? "" : describeError(err));
+      }
     } finally {
       running.current = false;
     }
   }, [setState]);
+  const syncRef = useRef(sync);
+  syncRef.current = sync;
 
   // Session: restore on start, follow sign-in/out.
   useEffect(() => {
@@ -222,8 +256,17 @@ export function useCloudSync(state: AppState, setState: Dispatch<SetStateAction<
 
   // Pick up changes from other devices when the app comes back, regains network, or every couple of minutes.
   useEffect(() => {
-    const onVisible = () => document.visibilityState === "visible" && void sync();
-    const onOnline = () => void sync();
+    let resumeTimer: number | undefined;
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        window.clearTimeout(resumeTimer);
+        resumeTimer = window.setTimeout(() => void sync(), RESUME_DELAY_MS);
+      }
+    };
+    const onOnline = () => {
+      retryAttempt.current = 0;
+      void sync();
+    };
     const onOffline = () => userRef.current && setStatus("offline");
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("online", onOnline);
@@ -234,6 +277,8 @@ export function useCloudSync(state: AppState, setState: Dispatch<SetStateAction<
       window.removeEventListener("online", onOnline);
       window.removeEventListener("offline", onOffline);
       window.clearInterval(timer);
+      window.clearTimeout(resumeTimer);
+      window.clearTimeout(retryTimer.current);
     };
   }, [sync]);
 
