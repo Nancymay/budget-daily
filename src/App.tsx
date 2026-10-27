@@ -1,3 +1,4 @@
+import { ConfirmProvider } from "./components/ui/ConfirmDialog";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { App as AntApp, ConfigProvider } from "antd";
 import { TodayPage } from "./components/TodayPage";
@@ -270,6 +271,7 @@ export default function App() {
       }}
     >
       <AntApp>
+        <ConfirmProvider>
         <div className="app">
           <main className="app-main">
             {view === "today" ? (
@@ -423,6 +425,7 @@ export default function App() {
           onRestore={restoreState}
           cloud={cloud}
         />
+        </ConfirmProvider>
       </AntApp>
     </ConfigProvider>
   );

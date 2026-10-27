@@ -7,6 +7,7 @@ import type { CloudSync } from "../lib/cloud";
 import { CloudSection } from "./CloudSection";
 import { Icon, UI_ICONS } from "./ui/Icon";
 import { Sheet } from "./ui/Sheet";
+import { useConfirm } from "./ui/ConfirmDialog";
 import type { AppState, PeriodMode } from "../types/models";
 
 interface SettingsSheetProps {
@@ -46,7 +47,8 @@ export function SettingsSheet({
   onRestore,
   cloud
 }: SettingsSheetProps) {
-  const { message, modal } = App.useApp();
+  const { message } = App.useApp();
+  const confirm = useConfirm();
   const inputRef = useRef<HTMLInputElement>(null);
   const { payDays, periodMode } = state.settings;
   const [balance, setBalance] = useState("");
@@ -76,18 +78,17 @@ export function SettingsSheet({
   const importFile = async (file: File) => {
     try {
       const restored = parseBackup(await file.text());
-      modal.confirm({
+      const ok = await confirm({
         title: "Заменить данные из файла?",
-        content: `В файле ${restored.transactions.length} операций. Текущие данные (${state.transactions.length} операций) будут заменены.`,
-        okText: "Заменить",
-        okButtonProps: { danger: true },
-        cancelText: "Отмена",
-        onOk: () => {
-          onRestore(restored);
-          onClose();
-          message.success("Данные восстановлены");
-        }
+        text: `В файле ${restored.transactions.length} операций. Текущие данные (${state.transactions.length} операций) будут заменены.`,
+        confirmText: "Заменить",
+        icon: "alert"
       });
+      if (ok) {
+        onRestore(restored);
+        onClose();
+        message.success("Данные восстановлены");
+      }
     } catch (error) {
       message.error(error instanceof Error ? error.message : "Не удалось прочитать файл");
     }
