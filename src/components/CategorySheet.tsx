@@ -1,4 +1,3 @@
-import { App } from "antd";
 import { useEffect, useState } from "react";
 import {
   CATEGORY_COLORS,
@@ -13,6 +12,7 @@ import { num, plural } from "../lib/format";
 import { CategoryBadge } from "./ui/CategoryBadge";
 import { Icon, UI_ICONS } from "./ui/Icon";
 import { Sheet } from "./ui/Sheet";
+import { useConfirm } from "./ui/ConfirmDialog";
 import type { CategoryStyle, TransactionType } from "../types/models";
 
 export type CategorySheetTarget = { kind: "add"; type: TransactionType } | { kind: "edit"; type: TransactionType; name: string };
@@ -36,7 +36,7 @@ interface CategorySheetProps {
 }
 
 export function CategorySheet({ target, styles, limits, usage, onClose, onSave, onDelete }: CategorySheetProps) {
-  const { modal } = App.useApp();
+  const confirm = useConfirm();
   const [type, setType] = useState<TransactionType>("expense");
   const [name, setName] = useState("");
   const [icon, setIcon] = useState<CategoryIcon>("star");
@@ -91,21 +91,21 @@ export function CategorySheet({ target, styles, limits, usage, onClose, onSave, 
     }
   };
 
-  const remove = () => {
+  const remove = async () => {
     if (!editing) {
       return;
     }
-    modal.confirm({
+    const ok = await confirm({
       title: `Удалить категорию «${target.name}»?`,
-      content: used && used.count > 0 ? "Операции с ней останутся, категория просто пропадёт из списка." : undefined,
-      okText: "Удалить",
-      okButtonProps: { danger: true },
-      cancelText: "Отмена",
-      onOk: () => {
-        onDelete(target.type, target.name);
-        onClose();
-      }
+      text:
+        used && used.count > 0
+          ? `${used.count} ${plural(used.count, "операция", "операции", "операций")} с ней ${plural(used.count, "останется", "останутся", "останутся")}, категория просто пропадёт из списка.`
+          : "Операций в этой категории нет."
     });
+    if (ok) {
+      onDelete(target.type, target.name);
+      onClose();
+    }
   };
 
   return (

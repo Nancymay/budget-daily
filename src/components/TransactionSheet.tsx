@@ -1,10 +1,10 @@
-import { App } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import { diffDays, getDefaultDateForPeriod, getTodayISO, isDateInPeriod, type Period } from "../lib/date";
 import { dayMonthShort, groupTypedAmount, num } from "../lib/format";
 import { resolveCategoryStyle } from "../lib/categoryStyle";
 import { Icon, UI_ICONS } from "./ui/Icon";
 import { Sheet } from "./ui/Sheet";
+import { useConfirm } from "./ui/ConfirmDialog";
 import type { CategoryStyle, Transaction, TransactionType } from "../types/models";
 
 interface TransactionSheetProps {
@@ -73,7 +73,7 @@ function dateLabel(date: string): string {
 }
 
 export function TransactionSheet({ open, period, categories, styles, initial, onClose, onSubmit, onDelete }: TransactionSheetProps) {
-  const { modal } = App.useApp();
+  const confirm = useConfirm();
   const [form, setForm] = useState<FormState>(() => initialState(period, initial, categories));
   const [error, setError] = useState("");
 
@@ -126,18 +126,17 @@ export function TransactionSheet({ open, period, categories, styles, initial, on
     );
   };
 
-  const remove = () => {
+  const remove = async () => {
     if (!initial) {
       return;
     }
-    modal.confirm({
+    const ok = await confirm({
       title: "Удалить операцию?",
-      content: `${initial.category} · ${num(initial.amount)} ₽`,
-      okText: "Удалить",
-      okButtonProps: { danger: true },
-      cancelText: "Отмена",
-      onOk: () => onDelete(initial.id)
+      text: `${initial.category} · ${num(initial.amount)} ₽`
     });
+    if (ok) {
+      onDelete(initial.id);
+    }
   };
 
   const amountText = form.amount || "0";
