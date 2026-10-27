@@ -95,12 +95,14 @@ export function CategorySheet({ target, styles, limits, usage, onClose, onSave, 
     if (!editing) {
       return;
     }
+    const count = used?.count ?? 0;
     const ok = await confirm({
       title: `Удалить категорию «${target.name}»?`,
       text:
-        used && used.count > 0
-          ? `${used.count} ${plural(used.count, "операция", "операции", "операций")} с ней ${plural(used.count, "останется", "останутся", "останутся")}, категория просто пропадёт из списка.`
-          : "Операций в этой категории нет."
+        count > 0
+          ? `Вместе с ней ${plural(count, "удалится", "удалятся", "удалятся")} ${count} ${plural(count, "операция", "операции", "операций")} на ${num(used?.total ?? 0)} ₽. Остатки и лимит на день пересчитаются.`
+          : "Операций в этой категории нет.",
+      confirmText: count > 0 ? "Удалить всё" : "Удалить"
     });
     if (ok) {
       onDelete(target.type, target.name);
