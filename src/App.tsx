@@ -175,6 +175,8 @@ export default function App() {
       }
       return {
         ...prev,
+        // Its operations go too; the sync sends them up as deletions.
+        transactions: prev.transactions.filter((tx) => !(tx.type === type && tx.category === category)),
         settings: {
           ...prev.settings,
           customCategories: {
