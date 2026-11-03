@@ -280,9 +280,7 @@ export default function App() {
               <>
                 <header className="top">
                   <div className="brand">
-                    <span className="brand-mark">
-                      <Icon path={UI_ICONS.trend} size={20} color="#C8F55A" strokeWidth={2.4} />
-                    </span>
+                    <img className="brand-mark" src={`${import.meta.env.BASE_URL}icons/icon-192.png`} alt="" width={36} height={36} />
                     <span className="brand-name">Budget Daily</span>
                   </div>
                   <button type="button" className="icon-btn icon-btn--status" aria-label="Меню и настройки" onClick={() => setSettingsOpen(true)}>

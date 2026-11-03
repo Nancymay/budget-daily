@@ -105,10 +105,8 @@ button {
   width: 36px;
   height: 36px;
   border-radius: 12px;
-  background: var(--accent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
+  object-fit: cover;
 }
 
 .brand-name {
