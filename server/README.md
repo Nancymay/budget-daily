@@ -72,7 +72,7 @@ EnvironmentFile = /root/pb/.env
 StandardOutput = append:/root/pb/std.log
 StandardError = append:/root/pb/std.log
 WorkingDirectory = /root/pb
-ExecStart = /root/pb/pocketbase serve api.pokarmanuapp.ru --encryptionEnv=PB_ENCRYPTION_KEY --origins=https://nancymay.github.io
+ExecStart = /root/pb/pocketbase serve api.pokarmanuapp.ru --encryptionEnv=PB_ENCRYPTION_KEY --origins=https://nancymay.github.io,capacitor://localhost
 
 [Install]
 WantedBy = multi-user.target
@@ -85,7 +85,7 @@ systemctl status pocketbase   # должно быть active (running)
 ```
 
 PocketBase сам получит сертификат Let's Encrypt — порты 80 и 443 должны быть открыты.
-`--origins` разрешает запросы к серверу только с сайта приложения.
+`--origins` разрешает запросы к серверу только с сайта приложения и из приложения для iPhone (`capacitor://localhost`).
 
 ## 5. Настроить в панели
 

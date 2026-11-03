@@ -29,19 +29,7 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
-          cleanupOutdatedCaches: true,
-          // Cache the web fonts after the first online visit so the app keeps its look offline.
-          runtimeCaching: [
-            {
-              urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
-              handler: "CacheFirst",
-              options: {
-                cacheName: "google-fonts",
-                expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 365 },
-                cacheableResponse: { statuses: [0, 200] }
-              }
-            }
-          ]
+          cleanupOutdatedCaches: true
         }
       })
     ]
