@@ -3,11 +3,11 @@
 Облако приложения — это [PocketBase](https://pocketbase.io): один файл, внутри база, вход по почте и API.
 Сервер стоит в России, данные пользователей хранятся на нём.
 
-Ниже `api.example.ru` — замени на свой поддомен, а `SERVER_IP` — на IP-адрес сервера.
+Сервер будет отвечать по адресу `api.pokarmanuapp.ru`. Везде ниже замени `SERVER_IP` на IP-адрес своего сервера.
 
 ## 1. Что понадобится
 
-- Домен (например, `example.ru`).
+- Домен (например, `pokarmanuapp.ru`).
 - Виртуальный сервер с Ubuntu 22.04 или 24.04 в российском дата-центре. Хватит 1 ядра и 1 ГБ памяти.
 - Почта для писем (Яндекс + пароль приложения).
 
@@ -19,7 +19,7 @@
 |---|---|---|
 | A | `api` | `SERVER_IP` |
 
-Запись начинает работать через 5–30 минут. Проверить: `ping api.example.ru` должен показать `SERVER_IP`.
+Запись начинает работать через 5–30 минут. Проверить: `ping api.pokarmanuapp.ru` должен показать `SERVER_IP`.
 
 ## 3. Установить PocketBase
 
@@ -72,7 +72,7 @@ EnvironmentFile = /root/pb/.env
 StandardOutput = append:/root/pb/std.log
 StandardError = append:/root/pb/std.log
 WorkingDirectory = /root/pb
-ExecStart = /root/pb/pocketbase serve api.example.ru --encryptionEnv=PB_ENCRYPTION_KEY --origins=https://nancymay.github.io
+ExecStart = /root/pb/pocketbase serve api.pokarmanuapp.ru --encryptionEnv=PB_ENCRYPTION_KEY --origins=https://nancymay.github.io
 
 [Install]
 WantedBy = multi-user.target
@@ -89,10 +89,10 @@ PocketBase сам получит сертификат Let's Encrypt — порт
 
 ## 5. Настроить в панели
 
-Открой `https://api.example.ru/_/` и войди как администратор.
+Открой `https://api.pokarmanuapp.ru/_/` и войди как администратор.
 
 1. **Settings → Application**
-   - Application URL: `https://api.example.ru`
+   - Application URL: `https://api.pokarmanuapp.ru`
    - Включи **Rate limits** (защита от перебора паролей).
    - Проверь, что **Batch API** включён (его включает миграция).
 2. **Settings → Mail settings**
@@ -109,7 +109,7 @@ PocketBase сам получит сертификат Let's Encrypt — порт
 В репозитории на GitHub: **Settings → Secrets and variables → Actions → Variables → New repository variable**
 
 - Name: `POCKETBASE_URL`
-- Value: `https://api.example.ru`
+- Value: `https://api.pokarmanuapp.ru`
 
 Затем **Actions → Deploy to GitHub Pages → Run workflow**, чтобы пересобрать сайт.
 В приложении в настройках появится вход в облако.
