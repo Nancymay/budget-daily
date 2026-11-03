@@ -2116,3 +2116,17 @@ button {
 .confirm-btn:active {
   filter: brightness(0.95);
 }
+
+.cloud-forgot,
+.cloud-delete {
+  align-self: flex-start;
+  min-height: 32px;
+}
+
+.link-btn--danger {
+  color: var(--danger);
+}
+
+.link-btn:disabled {
+  opacity: 0.5;
+}
