@@ -105,10 +105,8 @@ button {
   width: 36px;
   height: 36px;
   border-radius: 12px;
-  background: var(--accent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
+  object-fit: cover;
 }
 
 .brand-name {
@@ -2129,4 +2127,145 @@ button {
 
 .link-btn:disabled {
   opacity: 0.5;
+}
+
+/* ---------- statement import ---------- */
+
+.imp-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 8px;
+  border-radius: 16px;
+}
+
+.imp-row.is-off .imp-main {
+  opacity: 0.5;
+}
+
+.imp-check {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  margin-top: 1px;
+  border-radius: 9px;
+  border: 2px solid #c9c6d6;
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.imp-check.is-on {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.imp-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.imp-top,
+.imp-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.imp-desc {
+  font-weight: 700;
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.imp-amount {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 15px;
+  white-space: nowrap;
+}
+
+.imp-amount.is-income {
+  color: var(--green);
+}
+
+.imp-meta {
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.imp-badge {
+  color: var(--warn-ink);
+}
+
+.imp-cat {
+  flex: none;
+  height: 30px;
+  font-size: 13px;
+  background: var(--bg);
+  color: var(--muted);
+}
+
+.imp-cat select {
+  font-size: 13px;
+  max-width: 120px;
+}
+
+.imp-cat.is-set {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+.imp-hint {
+  margin: 0;
+}
+
+.imp-actions {
+  display: flex;
+  gap: 16px;
+}
+
+.imp-hidden {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.imp-hidden-btn {
+  height: 48px;
+  font-size: 14px;
+}
+
+.imp-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.imp-foot-hint {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-align: center;
+}
+
+.primary-btn:disabled {
+  opacity: 0.5;
+}
+
+.menu-row:disabled {
+  opacity: 0.6;
 }

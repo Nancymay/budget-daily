@@ -1,3 +1,5 @@
+import { ImportSheet, type ImportResult } from "./components/ImportSheet";
+import type { Statement } from "./lib/statement";
 import { ConfirmProvider } from "./components/ui/ConfirmDialog";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { App as AntApp, ConfigProvider } from "antd";
@@ -9,11 +11,12 @@ import { SummaryPage } from "./components/SummaryPage";
 import { TransactionSheet } from "./components/TransactionSheet";
 import { CategorySheet, type CategoryDraft, type CategorySheetTarget } from "./components/CategorySheet";
 import { SettingsSheet } from "./components/SettingsSheet";
+import { Onboarding, markOnboarded, shouldShowOnboarding, type OnboardingResult } from "./components/Onboarding";
 import { DotsIcon, Icon, UI_ICONS } from "./components/ui/Icon";
 import { balanceAt, buildForecast } from "./lib/finance";
 import { getPeriodFor, getTodayISO, shiftPeriod, type Period } from "./lib/date";
 import { periodLabel, periodLabelShort } from "./lib/format";
-import { getBaseCategories, loadState, saveState } from "./lib/storage";
+import { getBaseCategories, loadState, MAX_SKIPPED, saveState } from "./lib/storage";
 import { useCloudSync } from "./lib/cloud";
 import type { AppState, DistributionSettings, PeriodMode, Settings, Transaction, TransactionType } from "./types/models";
 
@@ -56,14 +59,28 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [categoryTarget, setCategoryTarget] = useState<CategorySheetTarget | null>(null);
   const [detailsTarget, setDetailsTarget] = useState<CategoryDetailsTarget | null>(null);
+  const [statement, setStatement] = useState<Statement | null>(null);
   const [categoryType, setCategoryType] = useState<TransactionType>("expense");
   const [period, setPeriod] = useState<Period>(() => getPeriodFor(getTodayISO(), periodDays(state.settings)));
+  // Decided once, from what was on this device at launch: existing users never see it.
+  const [onboarding, setOnboarding] = useState(() => shouldShowOnboarding(state.settings, state.transactions.length));
 
   useEffect(() => {
     saveState(state);
   }, [state]);
 
   const cloud = useCloudSync(state, setState);
+
+  // Paydays can change from outside the settings sheet (a sync from another device, onboarding):
+  // if the shown period no longer fits them, go back to the current one.
+  const daysKey = periodDays(state.settings).join(",");
+  useEffect(() => {
+    const days = daysKey ? daysKey.split(",").map(Number) : [];
+    const fitted = getPeriodFor(period.start, days);
+    if (fitted.start !== period.start || fitted.end !== period.end) {
+      setPeriod(getPeriodFor(getTodayISO(), days));
+    }
+  }, [daysKey, period]);
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
@@ -159,6 +176,29 @@ export default function App() {
     setTxSheetOpen(false);
   };
 
+  const importOperations = (result: ImportResult) => {
+    setState((prev) => {
+      const added = result.transactions.map((tx) => ({ ...tx, id: createId() }));
+      const custom = { income: [...prev.settings.customCategories.income], expense: [...prev.settings.customCategories.expense] };
+      for (const tx of added) {
+        if (!custom[tx.type].includes(tx.category)) {
+          custom[tx.type].push(tx.category);
+        }
+      }
+      return {
+        ...prev,
+        transactions: [...prev.transactions, ...added],
+        settings: {
+          ...prev.settings,
+          customCategories: custom,
+          importRules: { ...prev.settings.importRules, ...result.rules },
+          importSkipped: [...new Set([...prev.settings.importSkipped, ...result.skipped])].slice(-MAX_SKIPPED)
+        }
+      };
+    });
+    setStatement(null);
+  };
+
   const deleteTransaction = (id: string) => {
     setState((prev) => ({ ...prev, transactions: prev.transactions.filter((tx) => tx.id !== id) }));
     setEditingId(null);
@@ -252,6 +292,45 @@ export default function App() {
     [state.transactions]
   );
 
+  const applyOnboarding = (result: OnboardingResult) => {
+    setState((prev) => {
+      const names = result.limits.map((item) => item.name);
+      const categoryLimits = { ...prev.settings.categoryLimits };
+      const categoryStyles = { ...prev.settings.categoryStyles };
+      for (const item of result.limits) {
+        categoryLimits[item.name] = item.amount;
+        categoryStyles[item.name] = { icon: item.icon, color: item.color };
+      }
+      return {
+        ...prev,
+        settings: {
+          ...prev.settings,
+          periodMode: result.periodMode,
+          payDays: result.payDays,
+          opening: { date: getTodayISO(), amount: result.openingAmount },
+          customCategories: {
+            ...prev.settings.customCategories,
+            expense: [...new Set([...prev.settings.customCategories.expense, ...names])]
+          },
+          categoryLimits,
+          categoryStyles
+        }
+      };
+    });
+    setPeriod(getPeriodFor(getTodayISO(), periodDays(result)));
+  };
+
+  const finishOnboarding = () => {
+    markOnboarded();
+    setOnboarding(false);
+    setView("today");
+    window.scrollTo({ top: 0 });
+  };
+
+  if (onboarding) {
+    return <Onboarding cloud={cloud} onApply={applyOnboarding} onDone={finishOnboarding} />;
+  }
+
   const openNewTransaction = () => {
     setEditingId(null);
     setTxSheetOpen(true);
@@ -280,9 +359,7 @@ export default function App() {
               <>
                 <header className="top">
                   <div className="brand">
-                    <span className="brand-mark">
-                      <Icon path={UI_ICONS.trend} size={20} color="#C8F55A" strokeWidth={2.4} />
-                    </span>
+                    <img className="brand-mark" src={`${import.meta.env.BASE_URL}icons/icon-192.png`} alt="" width={36} height={36} />
                     <span className="brand-name">Budget Daily</span>
                   </div>
                   <button type="button" className="icon-btn icon-btn--status" aria-label="Меню и настройки" onClick={() => setSettingsOpen(true)}>
@@ -393,6 +470,15 @@ export default function App() {
             setTxSheetOpen(true);
           }}
         />
+        <ImportSheet
+          statement={statement}
+          transactions={state.transactions}
+          categories={mergedCategories}
+          rules={state.settings.importRules}
+          skipped={state.settings.importSkipped}
+          onClose={() => setStatement(null)}
+          onImport={importOperations}
+        />
         <TransactionSheet
           open={txSheetOpen}
           period={period}
@@ -425,6 +511,10 @@ export default function App() {
           onPeriodModeChange={setPeriodMode}
           onPayDaysChange={setPayDays}
           onRestore={restoreState}
+          onStatement={(next) => {
+            setSettingsOpen(false);
+            setStatement(next);
+          }}
           cloud={cloud}
         />
         </ConfirmProvider>

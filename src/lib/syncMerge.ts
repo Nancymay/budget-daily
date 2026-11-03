@@ -74,7 +74,9 @@ export function mergeSettings(primary: Settings, secondary: Settings): Settings 
       expense: union(primary.customCategories.expense, secondary.customCategories.expense)
     },
     categoryLimits: { ...secondary.categoryLimits, ...primary.categoryLimits },
-    categoryStyles: { ...secondary.categoryStyles, ...primary.categoryStyles }
+    categoryStyles: { ...secondary.categoryStyles, ...primary.categoryStyles },
+    importRules: { ...secondary.importRules, ...primary.importRules },
+    importSkipped: union(primary.importSkipped, secondary.importSkipped)
   };
 }
 
