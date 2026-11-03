@@ -11,6 +11,7 @@ import { SummaryPage } from "./components/SummaryPage";
 import { TransactionSheet } from "./components/TransactionSheet";
 import { CategorySheet, type CategoryDraft, type CategorySheetTarget } from "./components/CategorySheet";
 import { SettingsSheet } from "./components/SettingsSheet";
+import { Onboarding, markOnboarded, shouldShowOnboarding, type OnboardingResult } from "./components/Onboarding";
 import { DotsIcon, Icon, UI_ICONS } from "./components/ui/Icon";
 import { balanceAt, buildForecast } from "./lib/finance";
 import { getPeriodFor, getTodayISO, shiftPeriod, type Period } from "./lib/date";
@@ -61,12 +62,25 @@ export default function App() {
   const [statement, setStatement] = useState<Statement | null>(null);
   const [categoryType, setCategoryType] = useState<TransactionType>("expense");
   const [period, setPeriod] = useState<Period>(() => getPeriodFor(getTodayISO(), periodDays(state.settings)));
+  // Decided once, from what was on this device at launch: existing users never see it.
+  const [onboarding, setOnboarding] = useState(() => shouldShowOnboarding(state.settings, state.transactions.length));
 
   useEffect(() => {
     saveState(state);
   }, [state]);
 
   const cloud = useCloudSync(state, setState);
+
+  // Paydays can change from outside the settings sheet (a sync from another device, onboarding):
+  // if the shown period no longer fits them, go back to the current one.
+  const daysKey = periodDays(state.settings).join(",");
+  useEffect(() => {
+    const days = daysKey ? daysKey.split(",").map(Number) : [];
+    const fitted = getPeriodFor(period.start, days);
+    if (fitted.start !== period.start || fitted.end !== period.end) {
+      setPeriod(getPeriodFor(getTodayISO(), days));
+    }
+  }, [daysKey, period]);
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
@@ -277,6 +291,45 @@ export default function App() {
       ),
     [state.transactions]
   );
+
+  const applyOnboarding = (result: OnboardingResult) => {
+    setState((prev) => {
+      const names = result.limits.map((item) => item.name);
+      const categoryLimits = { ...prev.settings.categoryLimits };
+      const categoryStyles = { ...prev.settings.categoryStyles };
+      for (const item of result.limits) {
+        categoryLimits[item.name] = item.amount;
+        categoryStyles[item.name] = { icon: item.icon, color: item.color };
+      }
+      return {
+        ...prev,
+        settings: {
+          ...prev.settings,
+          periodMode: result.periodMode,
+          payDays: result.payDays,
+          opening: { date: getTodayISO(), amount: result.openingAmount },
+          customCategories: {
+            ...prev.settings.customCategories,
+            expense: [...new Set([...prev.settings.customCategories.expense, ...names])]
+          },
+          categoryLimits,
+          categoryStyles
+        }
+      };
+    });
+    setPeriod(getPeriodFor(getTodayISO(), periodDays(result)));
+  };
+
+  const finishOnboarding = () => {
+    markOnboarded();
+    setOnboarding(false);
+    setView("today");
+    window.scrollTo({ top: 0 });
+  };
+
+  if (onboarding) {
+    return <Onboarding cloud={cloud} onApply={applyOnboarding} onDone={finishOnboarding} />;
+  }
 
   const openNewTransaction = () => {
     setEditingId(null);
