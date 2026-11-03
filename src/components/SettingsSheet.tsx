@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { getPeriodFor, getTodayISO, type Period } from "../lib/date";
 import { dayMonthShort, num, periodLabel } from "../lib/format";
 import { parseBackup } from "../lib/storage";
+import { readStatement, type Statement } from "../lib/statement";
 import type { CloudSync } from "../lib/cloud";
 import { CloudSection } from "./CloudSection";
 import { Icon, UI_ICONS } from "./ui/Icon";
@@ -20,6 +21,8 @@ interface SettingsSheetProps {
   onPeriodModeChange: (mode: PeriodMode) => void;
   onPayDaysChange: (payDays: number[]) => void;
   onRestore: (state: AppState) => void;
+  /** A bank statement was read: open the import preview. */
+  onStatement: (statement: Statement) => void;
   cloud: CloudSync;
 }
 
@@ -45,10 +48,29 @@ export function SettingsSheet({
   onPeriodModeChange,
   onPayDaysChange,
   onRestore,
+  onStatement,
   cloud
 }: SettingsSheetProps) {
   const { message } = App.useApp();
   const confirm = useConfirm();
+  const statementRef = useRef<HTMLInputElement>(null);
+  const [readingStatement, setReadingStatement] = useState(false);
+
+  const openStatement = async (file: File) => {
+    setReadingStatement(true);
+    try {
+      const statement = await readStatement(file);
+      if (statement.operations.length === 0) {
+        message.info("В выписке нет операций");
+        return;
+      }
+      onStatement(statement);
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : "Не удалось прочитать выписку");
+    } finally {
+      setReadingStatement(false);
+    }
+  };
   const inputRef = useRef<HTMLInputElement>(null);
   const { payDays, periodMode } = state.settings;
   const [balance, setBalance] = useState("");
@@ -175,6 +197,35 @@ export function SettingsSheet({
           На {dayMonthShort(period.start)} — {num(startBalance)} ₽. Остальные периоды пересчитаются от этой суммы.
         </span>
       </label>
+
+      <div className="field">
+        <span className="field-caption">Банк</span>
+        <div className="card card--rows card--soft">
+          <button type="button" className="menu-row" onClick={() => statementRef.current?.click()} disabled={readingStatement}>
+            <span className="menu-icon menu-icon--lime">
+              <Icon path={UI_ICONS.upload} size={20} strokeWidth={2.4} />
+            </span>
+            <span className="menu-text">
+              <strong>{readingStatement ? "Читаю выписку…" : "Загрузить выписку"}</strong>
+              <span>Т-Банк, CSV или Excel · сначала покажу, что добавится</span>
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <input
+        ref={statementRef}
+        type="file"
+        accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        hidden
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = "";
+          if (file) {
+            void openStatement(file);
+          }
+        }}
+      />
 
       <div className="field">
         <span className="field-caption">Резервная копия</span>

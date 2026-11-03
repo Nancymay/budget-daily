@@ -1,3 +1,5 @@
+import { ImportSheet, type ImportResult } from "./components/ImportSheet";
+import type { Statement } from "./lib/statement";
 import { ConfirmProvider } from "./components/ui/ConfirmDialog";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { App as AntApp, ConfigProvider } from "antd";
@@ -13,7 +15,7 @@ import { DotsIcon, Icon, UI_ICONS } from "./components/ui/Icon";
 import { balanceAt, buildForecast } from "./lib/finance";
 import { getPeriodFor, getTodayISO, shiftPeriod, type Period } from "./lib/date";
 import { periodLabel, periodLabelShort } from "./lib/format";
-import { getBaseCategories, loadState, saveState } from "./lib/storage";
+import { getBaseCategories, loadState, MAX_SKIPPED, saveState } from "./lib/storage";
 import { useCloudSync } from "./lib/cloud";
 import type { AppState, DistributionSettings, PeriodMode, Settings, Transaction, TransactionType } from "./types/models";
 
@@ -56,6 +58,7 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [categoryTarget, setCategoryTarget] = useState<CategorySheetTarget | null>(null);
   const [detailsTarget, setDetailsTarget] = useState<CategoryDetailsTarget | null>(null);
+  const [statement, setStatement] = useState<Statement | null>(null);
   const [categoryType, setCategoryType] = useState<TransactionType>("expense");
   const [period, setPeriod] = useState<Period>(() => getPeriodFor(getTodayISO(), periodDays(state.settings)));
 
@@ -157,6 +160,29 @@ export default function App() {
     });
     setEditingId(null);
     setTxSheetOpen(false);
+  };
+
+  const importOperations = (result: ImportResult) => {
+    setState((prev) => {
+      const added = result.transactions.map((tx) => ({ ...tx, id: createId() }));
+      const custom = { income: [...prev.settings.customCategories.income], expense: [...prev.settings.customCategories.expense] };
+      for (const tx of added) {
+        if (!custom[tx.type].includes(tx.category)) {
+          custom[tx.type].push(tx.category);
+        }
+      }
+      return {
+        ...prev,
+        transactions: [...prev.transactions, ...added],
+        settings: {
+          ...prev.settings,
+          customCategories: custom,
+          importRules: { ...prev.settings.importRules, ...result.rules },
+          importSkipped: [...new Set([...prev.settings.importSkipped, ...result.skipped])].slice(-MAX_SKIPPED)
+        }
+      };
+    });
+    setStatement(null);
   };
 
   const deleteTransaction = (id: string) => {
@@ -391,6 +417,15 @@ export default function App() {
             setTxSheetOpen(true);
           }}
         />
+        <ImportSheet
+          statement={statement}
+          transactions={state.transactions}
+          categories={mergedCategories}
+          rules={state.settings.importRules}
+          skipped={state.settings.importSkipped}
+          onClose={() => setStatement(null)}
+          onImport={importOperations}
+        />
         <TransactionSheet
           open={txSheetOpen}
           period={period}
@@ -423,6 +458,10 @@ export default function App() {
           onPeriodModeChange={setPeriodMode}
           onPayDaysChange={setPayDays}
           onRestore={restoreState}
+          onStatement={(next) => {
+            setSettingsOpen(false);
+            setStatement(next);
+          }}
           cloud={cloud}
         />
         </ConfirmProvider>

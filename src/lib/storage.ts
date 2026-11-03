@@ -123,7 +123,8 @@ function sanitizeTransactions(input: unknown): Transaction[] {
       amount,
       category: candidate.category,
       note: typeof candidate.note === "string" ? candidate.note : "",
-      spread: candidate.type === "income" ? sanitizeSpread(candidate.spread) : undefined
+      spread: candidate.type === "income" ? sanitizeSpread(candidate.spread) : undefined,
+      importKey: typeof candidate.importKey === "string" && candidate.importKey ? candidate.importKey : undefined
     });
 
     return acc;
@@ -131,6 +132,21 @@ function sanitizeTransactions(input: unknown): Transaction[] {
 }
 
 export const DEFAULT_PAY_DAYS = [5, 20];
+/** Remembered skipped bank operations; old ones fall off (a few years of statements). */
+export const MAX_SKIPPED = 5000;
+
+function sanitizeImportRules(input: unknown): Record<string, string> {
+  if (typeof input !== "object" || input === null) {
+    return {};
+  }
+  const result: Record<string, string> = {};
+  for (const [key, value] of Object.entries(input)) {
+    if (typeof value === "string" && value.trim() && /^(income|expense)\|/.test(key)) {
+      result[key] = value;
+    }
+  }
+  return result;
+}
 
 function sanitizePayDays(input: unknown): number[] | null {
   if (!Array.isArray(input)) {
@@ -189,7 +205,9 @@ export function getDefaultState(): AppState {
         income: [],
         expense: []
       },
-      categoryStyles: {}
+      categoryStyles: {},
+      importRules: {},
+      importSkipped: []
     },
     transactions: []
   };
@@ -219,7 +237,9 @@ export function normalizeState(parsed: Partial<AppState>): AppState {
         income: sanitizeStringList(settings?.customCategories?.income),
         expense: sanitizeStringList(settings?.customCategories?.expense)
       },
-      categoryStyles: sanitizeStyles(settings?.categoryStyles)
+      categoryStyles: sanitizeStyles(settings?.categoryStyles),
+      importRules: sanitizeImportRules(settings?.importRules),
+      importSkipped: sanitizeStringList(settings?.importSkipped).slice(-MAX_SKIPPED)
     },
     transactions: sanitizeTransactions(parsed.transactions)
   };

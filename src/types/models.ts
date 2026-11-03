@@ -18,6 +18,8 @@ export interface Transaction {
   category: string;
   note?: string;
   spread?: IncomeSpread;
+  /** Set for operations loaded from a bank statement: the bank operation's key. */
+  importKey?: string;
 }
 
 export interface DistributionSettings {
@@ -44,6 +46,10 @@ export interface Settings {
   customCategories: Record<TransactionType, string[]>;
   /** Icon and color chosen for a category, by category name. Missing ones get a default look. */
   categoryStyles: Record<string, CategoryStyle>;
+  /** Statement import: "type|description" (lower-case) -> category picked last time. */
+  importRules: Record<string, string>;
+  /** Statement import: keys of bank operations the user chose not to add. */
+  importSkipped: string[];
 }
 
 export interface CategoryStyle {
