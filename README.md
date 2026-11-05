@@ -34,21 +34,9 @@ npm run build
 - Service worker регистрируется в `src/main.tsx` через `virtual:pwa-register`.
 - После первого открытия и кэширования статических ассетов приложение работает офлайн.
 
-## Деплой на GitHub Pages
+## Деплой
 
-1. Для репозитория вида `https://github.com/<user>/<repo>` выстави `base` через переменную:
-
-```bash
-VITE_BASE_PATH=/<repo>/ npm run build
-```
-
-2. Публикация в ветку `gh-pages`:
-
-```bash
-npm run deploy
-```
-
-По умолчанию `deploy` использует содержимое `dist/`.
+Сайт живёт на https://pokarmanuapp.ru: GitHub Actions собирает его при каждом пуше в `main` и публикует на GitHub Pages с собственным доменом (Settings → Pages → Custom domain, файл `public/CNAME`).
 
 ## Структура данных
 
