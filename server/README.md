@@ -72,7 +72,7 @@ EnvironmentFile = /root/pb/.env
 StandardOutput = append:/root/pb/std.log
 StandardError = append:/root/pb/std.log
 WorkingDirectory = /root/pb
-ExecStart = /root/pb/pocketbase serve api.pokarmanuapp.ru --encryptionEnv=PB_ENCRYPTION_KEY --origins=https://nancymay.github.io,capacitor://localhost
+ExecStart = /root/pb/pocketbase serve api.pokarmanuapp.ru --encryptionEnv=PB_ENCRYPTION_KEY --origins=https://pokarmanuapp.ru,https://www.pokarmanuapp.ru,https://nancymay.github.io,capacitor://localhost
 
 [Install]
 WantedBy = multi-user.target

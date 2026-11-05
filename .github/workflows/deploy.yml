@@ -33,7 +33,7 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          VITE_BASE_PATH: /budget-daily/
+          VITE_BASE_PATH: /
           # Address of the PocketBase server: Settings → Secrets and variables → Actions → Variables
           VITE_POCKETBASE_URL: ${{ vars.POCKETBASE_URL }}
 
