@@ -180,7 +180,7 @@ export function Onboarding({ cloud, onApply, onDone }: OnboardingProps) {
         <>
           <div className="ob-brand">
             <img src={`${import.meta.env.BASE_URL}icons/icon-192.png`} alt="" width={36} height={36} />
-            <span>Budget Daily</span>
+            <span>Pokarmanu</span>
           </div>
           <div className="ob-stack" aria-hidden="true">
             <div className="ob-stack-back">

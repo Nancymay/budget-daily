@@ -1,6 +1,6 @@
 {
 	"appId": "ru.pokarmanuapp.budget",
-	"appName": "Budget Daily",
+	"appName": "Pokarmanu",
 	"webDir": "dist",
 	"ios": {
 		"contentInset": "never",

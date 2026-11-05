@@ -1,4 +1,4 @@
-# Сервер Budget Daily (PocketBase)
+# Сервер Pokarmanu (PocketBase)
 
 Облако приложения — это [PocketBase](https://pocketbase.io): один файл, внутри база, вход по почте и API.
 Сервер стоит в России, данные пользователей хранятся на нём.
@@ -96,7 +96,7 @@ PocketBase сам получит сертификат Let's Encrypt — порт
    - Включи **Rate limits** (защита от перебора паролей).
    - Проверь, что **Batch API** включён (его включает миграция).
 2. **Settings → Mail settings**
-   - Sender name: `Budget Daily`, Sender address: твоя почта.
+   - Sender name: `Pokarmanu`, Sender address: твоя почта.
    - Use SMTP mail server: включить. Host `smtp.yandex.ru`, Port `465`,
      Username — почта целиком, Password — пароль приложения Яндекса, TLS — включить.
    - Нажми **Send test email**, чтобы проверить.

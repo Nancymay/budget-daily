@@ -14,9 +14,9 @@ export default defineConfig(({ mode }) => {
         registerType: "autoUpdate",
         includeAssets: ["favicon.ico", "icons/*.png"],
         manifest: {
-          name: "Budget Daily",
-          short_name: "BudgetDaily",
-          description: "Offline-first budget planner with daily balance forecast",
+          name: "Pokarmanu",
+          short_name: "Pokarmanu",
+          description: "Бюджет на каждый день: сколько можно потратить сегодня",
           theme_color: "#f4f3f8",
           background_color: "#f4f3f8",
           display: "standalone",

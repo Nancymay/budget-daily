@@ -1,4 +1,4 @@
-# Budget Daily (PWA)
+# Pokarmanu (PWA)
 
 Минималистичное offline-first PWA для ежедневного контроля бюджета:
 - доходы/расходы;

@@ -274,7 +274,7 @@ export function parseBackup(text: string): AppState {
     throw new Error("Файл не похож на резервную копию (это не JSON).");
   }
   if (typeof parsed !== "object" || parsed === null || !("transactions" in parsed) || !("settings" in parsed)) {
-    throw new Error("В файле нет данных Budget Daily.");
+    throw new Error("В файле нет данных Pokarmanu.");
   }
   return normalizeState(parsed as Partial<AppState>);
 }
