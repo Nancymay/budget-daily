@@ -144,6 +144,17 @@ function describeError(error: unknown): string {
     if (error.status >= 500) {
       return "Сервер временно недоступен";
     }
+    // A failed batch only says "Batch transaction failed." — show which record and field the server rejected.
+    const requests = (error.response?.data as { requests?: Record<string, { response?: { message?: string; data?: Record<string, { code?: string; message?: string }> } }> } | undefined)
+      ?.requests;
+    const failed = requests ? Object.entries(requests)[0] : undefined;
+    if (failed) {
+      const [index, info] = failed;
+      const fields = Object.entries(info.response?.data ?? {})
+        .map(([field, detail]) => `${field}: ${detail?.message ?? detail?.code ?? "?"}`)
+        .join("; ");
+      return `Сервер не принял запись №${Number(index) + 1}: ${info.response?.message ?? "ошибка"}${fields ? ` (${fields})` : ""}`;
+    }
   }
   return errorMessage(error);
 }
