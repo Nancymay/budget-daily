@@ -14,9 +14,9 @@ export default defineConfig(({ mode }) => {
         registerType: "autoUpdate",
         includeAssets: ["favicon.ico", "icons/*.png"],
         manifest: {
-          name: "Budget Daily",
-          short_name: "BudgetDaily",
-          description: "Offline-first budget planner with daily balance forecast",
+          name: "Pokarmanu",
+          short_name: "Pokarmanu",
+          description: "Бюджет на каждый день: сколько можно потратить сегодня",
           theme_color: "#f4f3f8",
           background_color: "#f4f3f8",
           display: "standalone",
@@ -29,19 +29,7 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
-          cleanupOutdatedCaches: true,
-          // Cache the web fonts after the first online visit so the app keeps its look offline.
-          runtimeCaching: [
-            {
-              urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
-              handler: "CacheFirst",
-              options: {
-                cacheName: "google-fonts",
-                expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 365 },
-                cacheableResponse: { statuses: [0, 200] }
-              }
-            }
-          ]
+          cleanupOutdatedCaches: true
         }
       })
     ]

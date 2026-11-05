@@ -81,7 +81,8 @@ button {
 }
 
 .app-main {
-  padding: 20px 16px calc(120px + env(safe-area-inset-bottom));
+  /* safe-area: room for the notch / status bar in the iOS app and the home-screen app */
+  padding: calc(20px + env(safe-area-inset-top)) 16px calc(120px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -2113,6 +2114,20 @@ button {
 
 .confirm-btn:active {
   filter: brightness(0.95);
+}
+
+.cloud-forgot,
+.cloud-delete {
+  align-self: flex-start;
+  min-height: 32px;
+}
+
+.link-btn--danger {
+  color: var(--danger);
+}
+
+.link-btn:disabled {
+  opacity: 0.5;
 }
 
 /* ---------- statement import ---------- */

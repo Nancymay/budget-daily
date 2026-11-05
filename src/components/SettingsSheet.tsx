@@ -93,7 +93,7 @@ export function SettingsSheet({
   };
 
   const exportData = () => {
-    downloadJson({ app: "budget-daily", exportedAt: new Date().toISOString(), ...state }, `budget-daily-${today}.json`);
+    downloadJson({ app: "budget-daily", exportedAt: new Date().toISOString(), ...state }, `pokarmanu-${today}.json`);
     message.success("Резервная копия сохранена");
   };
 

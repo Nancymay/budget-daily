@@ -360,7 +360,7 @@ export default function App() {
                 <header className="top">
                   <div className="brand">
                     <img className="brand-mark" src={`${import.meta.env.BASE_URL}icons/icon-192.png`} alt="" width={36} height={36} />
-                    <span className="brand-name">Budget Daily</span>
+                    <span className="brand-name">Pokarmanu</span>
                   </div>
                   <button type="button" className="icon-btn icon-btn--status" aria-label="Меню и настройки" onClick={() => setSettingsOpen(true)}>
                     <DotsIcon />

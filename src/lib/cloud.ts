@@ -1,21 +1,39 @@
-import { createClient, type User } from "@supabase/supabase-js";
+import PocketBase, { ClientResponseError, type RecordModel } from "pocketbase";
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { applyOnTop, EMPTY_BASE, mergeSync, type PushRow, type RemoteRow, type SyncBase } from "./syncMerge";
 import type { AppState } from "../types/models";
 
-// Public by design: the publishable key only works together with the row-level
-// security rules on the table, which limit every user to their own rows.
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://jtpicakfluftkftydaka.supabase.co";
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY || "sb_publishable_OALwwVhRmnwGjvtx9T768A_Ip1NMcOL";
+// The app's own PocketBase server (in Russia). Set at build time from the
+// POCKETBASE_URL repository variable; without it the cloud is simply off.
+const SERVER_URL = (import.meta.env.VITE_POCKETBASE_URL ?? "").trim().replace(/\/+$/, "");
 const TABLE = "budget_records";
 const META_KEY = "budget-daily.sync.v1";
-const PAGE = 1000;
+/** PocketBase's batch limit set by the server migration. */
+const BATCH_SIZE = 100;
 /** Pull a bit further back than the last sync to cover clock differences between devices. */
 const OVERLAP_MS = 10 * 60 * 1000;
+/** Delays before retrying a sync that failed on the network (iOS often drops the first requests after resume). */
+const RETRY_DELAYS_MS = [2000, 5000, 15000];
+/** Give the network a moment after the app comes back from the background. */
+const RESUME_DELAY_MS = 1200;
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
-  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: "budget-daily.auth" }
-});
+export const cloudConfigured = SERVER_URL !== "";
+
+const pb = new PocketBase(cloudConfigured ? SERVER_URL : "http://localhost");
+// Several syncs can run the same request; PocketBase would otherwise cancel the earlier one.
+pb.autoCancellation(false);
+
+// Session key left over from the previous cloud setup.
+try {
+  localStorage.removeItem("budget-daily.auth");
+} catch {
+  // storage blocked
+}
+
+export interface CloudUser {
+  id: string;
+  email: string;
+}
 
 interface SyncMeta {
   userId: string;
@@ -48,32 +66,47 @@ function saveMeta(meta: SyncMeta | null): void {
   }
 }
 
-async function pullSince(since: string | null): Promise<RemoteRow[]> {
-  const rows: RemoteRow[] = [];
-  for (let from = 0; ; from += PAGE) {
-    let query = supabase.from(TABLE).select("kind,id,data,deleted,updated_at").order("updated_at").range(from, from + PAGE - 1);
-    if (since) {
-      query = query.gt("updated_at", since);
-    }
-    const { data, error } = await query;
-    if (error) {
-      throw error;
-    }
-    rows.push(...((data ?? []) as RemoteRow[]));
-    if (!data || data.length < PAGE) {
-      return rows;
-    }
-  }
+/**
+ * A stable 15-character record id for (user, kind, rid), so pushing the same
+ * record again updates it instead of creating a copy (batch upsert needs the id).
+ */
+async function recordId(userId: string, kind: string, rid: string): Promise<string> {
+  const bytes = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${userId}|${kind}|${rid}`)));
+  const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789";
+  return Array.from(bytes.slice(0, 15), (byte) => alphabet[byte % alphabet.length]).join("");
+}
+
+async function pullSince(since: Date | null): Promise<RemoteRow[]> {
+  const records = await pb.collection(TABLE).getFullList<RecordModel>({
+    batch: 500,
+    sort: "updated",
+    fields: "kind,rid,data,deleted,updated",
+    // The value is our own date, in PocketBase's "YYYY-MM-DD HH:MM:SS.sssZ" form, so no escaping is needed.
+    ...(since ? { filter: `updated > "${since.toISOString().replace("T", " ")}"` } : {})
+  });
+  return records.map((record) => ({
+    kind: record.kind as RemoteRow["kind"],
+    id: String(record.rid),
+    data: record.data,
+    deleted: Boolean(record.deleted),
+    updated_at: String(record.updated)
+  }));
 }
 
 async function pushRows(userId: string, rows: PushRow[]): Promise<void> {
-  const updatedAt = new Date().toISOString();
-  for (let i = 0; i < rows.length; i += 500) {
-    const chunk = rows.slice(i, i + 500).map((row) => ({ ...row, user_id: userId, updated_at: updatedAt }));
-    const { error } = await supabase.from(TABLE).upsert(chunk, { onConflict: "user_id,kind,id" });
-    if (error) {
-      throw error;
+  for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+    const batch = pb.createBatch();
+    for (const row of rows.slice(i, i + BATCH_SIZE)) {
+      batch.collection(TABLE).upsert({
+        id: await recordId(userId, row.kind, row.id),
+        user: userId,
+        kind: row.kind,
+        rid: row.id,
+        data: row.data,
+        deleted: row.deleted
+      });
     }
+    await batch.send();
   }
 }
 
@@ -82,30 +115,43 @@ function errorMessage(error: unknown): string {
 }
 
 /**
- * The request never reached the server. Each browser words this differently:
- * Chrome "Failed to fetch", Safari "Load failed" / "The network connection was lost",
- * Firefox "NetworkError when attempting to fetch resource".
+ * The request never reached the server. PocketBase reports that as status 0;
+ * the underlying browser message differs (Chrome "Failed to fetch", Safari "Load failed", ...).
  */
 export function isNetworkError(error: unknown): boolean {
-  return /failed to fetch|load failed|networkerror|network connection was lost|network request failed|internet connection appears to be offline|timed? ?out|cancelled/i.test(
+  if (error instanceof ClientResponseError) {
+    return error.status === 0 && !error.isAbort;
+  }
+  return /failed to fetch|load failed|networkerror|network connection was lost|network request failed|internet connection appears to be offline|timed? ?out/i.test(
     errorMessage(error)
   );
 }
 
-/** Delays before retrying a sync that failed on the network (iOS often drops the first requests after resume). */
-const RETRY_DELAYS_MS = [2000, 5000, 15000];
-/** Give the network a moment after the app comes back from the background. */
-const RESUME_DELAY_MS = 1200;
-
 function describeError(error: unknown): string {
-  const message = errorMessage(error);
-  if (isNetworkError(message)) {
+  if (isNetworkError(error)) {
     return "Не удалось связаться с сервером — проверь интернет";
   }
-  if (/permission denied|does not exist|42501|42P01|PGRST/i.test(message)) {
-    return "Нет доступа к таблице в Supabase — проверь SQL из настройки";
+  if (error instanceof ClientResponseError) {
+    if (error.status === 401) {
+      return "Сессия истекла — войди заново";
+    }
+    if (error.status === 403) {
+      return "Сервер не разрешил запрос — проверь настройку сервера";
+    }
+    if (error.status === 429) {
+      return "Слишком много запросов — подожди минуту";
+    }
+    if (error.status >= 500) {
+      return "Сервер временно недоступен";
+    }
   }
-  return message;
+  return errorMessage(error);
+}
+
+/** Field-level validation errors PocketBase returns as response.data.<field>.code. */
+function fieldErrorCode(error: ClientResponseError, field: string): string | undefined {
+  const data = error.response?.data as Record<string, { code?: string }> | undefined;
+  return data?.[field]?.code;
 }
 
 export interface AuthResult {
@@ -113,51 +159,38 @@ export interface AuthResult {
   info?: string;
 }
 
-function describeAuthError(message: string): string {
-  if (/invalid login credentials/i.test(message)) {
-    return "Неверная почта или пароль";
-  }
-  if (/not confirmed/i.test(message)) {
-    return "Почта ещё не подтверждена — нажми ссылку в письме от Supabase";
-  }
-  if (/already registered|already exists/i.test(message)) {
-    return "Такой аккаунт уже есть — нажми «Войти»";
-  }
-  if (/password/i.test(message) && /least|short|characters/i.test(message)) {
-    return "Пароль слишком короткий — нужно минимум 6 символов";
-  }
-  if (/rate|seconds|too many/i.test(message)) {
-    return "Слишком много попыток — подожди минуту";
-  }
-  if (/signups? not allowed|disabled/i.test(message)) {
-    return "Регистрация новых аккаунтов выключена";
-  }
-  return describeError(message);
-}
-
 export type CloudStatus = "signedOut" | "syncing" | "synced" | "offline" | "error";
 
 export interface CloudSync {
-  user: User | null;
+  /** False when the app was built without a server address. */
+  configured: boolean;
+  user: CloudUser | null;
   status: CloudStatus;
   lastSyncedAt: Date | null;
   error: string;
   signIn: (email: string, password: string) => Promise<AuthResult>;
   signUp: (email: string, password: string) => Promise<AuthResult>;
+  resetPassword: (email: string) => Promise<AuthResult>;
   signOut: () => Promise<void>;
+  /** Deletes the account and every record of it on the server. Local data stays on this device. */
+  deleteAccount: () => Promise<AuthResult>;
   syncNow: () => void;
+}
+
+function toUser(record: RecordModel | null): CloudUser | null {
+  return record ? { id: record.id, email: String(record.email ?? "") } : null;
 }
 
 /** Keeps the local state and the user's cloud copy in step. Local storage stays the source of truth offline. */
 export function useCloudSync(state: AppState, setState: Dispatch<SetStateAction<AppState>>): CloudSync {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<CloudUser | null>(null);
   const [status, setStatus] = useState<CloudStatus>("signedOut");
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
   const [error, setError] = useState("");
 
   const stateRef = useRef(state);
   stateRef.current = state;
-  const userRef = useRef<User | null>(null);
+  const userRef = useRef<CloudUser | null>(null);
   const running = useRef(false);
   const again = useRef(false);
   const lastPushed = useRef<AppState | null>(null);
@@ -185,7 +218,7 @@ export function useCloudSync(state: AppState, setState: Dispatch<SetStateAction<
         again.current = false;
         const meta = loadMeta(current.id);
         const startedAt = new Date();
-        const since = meta.lastPulledAt ? new Date(new Date(meta.lastPulledAt).getTime() - OVERLAP_MS).toISOString() : null;
+        const since = meta.lastPulledAt ? new Date(new Date(meta.lastPulledAt).getTime() - OVERLAP_MS) : null;
         const remote = await pullSince(since);
 
         const snapshot = stateRef.current;
@@ -211,7 +244,11 @@ export function useCloudSync(state: AppState, setState: Dispatch<SetStateAction<
     } catch (err) {
       const offline = typeof navigator !== "undefined" && !navigator.onLine;
       const delay = RETRY_DELAYS_MS[retryAttempt.current];
-      if (!offline && isNetworkError(err) && delay !== undefined) {
+      if (err instanceof ClientResponseError && err.status === 401) {
+        // The token expired or the account is gone: sign out cleanly.
+        pb.authStore.clear();
+        setError("");
+      } else if (!offline && isNetworkError(err) && delay !== undefined) {
         // A blip, not a real error yet: stay in "syncing" and quietly try again.
         retryAttempt.current += 1;
         window.clearTimeout(retryTimer.current);
@@ -230,7 +267,11 @@ export function useCloudSync(state: AppState, setState: Dispatch<SetStateAction<
 
   // Session: restore on start, follow sign-in/out.
   useEffect(() => {
-    const apply = (next: User | null) => {
+    if (!cloudConfigured) {
+      return;
+    }
+    const apply = (record: RecordModel | null) => {
+      const next = record && record.verified ? toUser(record) : null;
       const changed = next?.id !== userRef.current?.id;
       userRef.current = next;
       setUser(next);
@@ -240,9 +281,18 @@ export function useCloudSync(state: AppState, setState: Dispatch<SetStateAction<
         void sync();
       }
     };
-    void supabase.auth.getSession().then(({ data }) => apply(data.session?.user ?? null));
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => apply(session?.user ?? null));
-    return () => data.subscription.unsubscribe();
+    const unsubscribe = pb.authStore.onChange((_token, record) => apply(record), true);
+    // Renew the saved session (and pick up a deleted account or a changed email).
+    if (pb.authStore.isValid) {
+      pb.collection("users")
+        .authRefresh()
+        .catch((err: unknown) => {
+          if (err instanceof ClientResponseError && (err.status === 401 || err.status === 404)) {
+            pb.authStore.clear();
+          }
+        });
+    }
+    return unsubscribe;
   }, [sync]);
 
   // Push local edits shortly after they happen.
@@ -283,29 +333,90 @@ export function useCloudSync(state: AppState, setState: Dispatch<SetStateAction<
   }, [sync]);
 
   const signIn = useCallback(async (email: string, password: string): Promise<AuthResult> => {
-    const { error: err } = await supabase.auth.signInWithPassword({ email, password });
-    return err ? { error: describeAuthError(err.message) } : {};
+    try {
+      const { record } = await pb.collection("users").authWithPassword(email, password);
+      if (!record.verified) {
+        // Not confirmed yet: don't keep the session, send the link again.
+        pb.authStore.clear();
+        await pb.collection("users").requestVerification(email).catch(() => undefined);
+        return { error: "Почта ещё не подтверждена — мы отправили письмо со ссылкой ещё раз" };
+      }
+      return {};
+    } catch (err) {
+      if (err instanceof ClientResponseError && err.status === 400) {
+        return { error: "Неверная почта или пароль" };
+      }
+      return { error: describeError(err) };
+    }
   }, []);
 
   const signUp = useCallback(async (email: string, password: string): Promise<AuthResult> => {
-    const { data, error: err } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: `${window.location.origin}${import.meta.env.BASE_URL}` }
-    });
-    if (err) {
-      return { error: describeAuthError(err.message) };
+    try {
+      await pb.collection("users").create({ email, password, passwordConfirm: password, emailVisibility: false });
+      await pb.collection("users").requestVerification(email);
+      return { info: "Мы отправили письмо — подтверди почту по ссылке, потом вернись сюда и нажми «Войти»." };
+    } catch (err) {
+      if (err instanceof ClientResponseError && err.status === 400) {
+        if (fieldErrorCode(err, "email") === "validation_not_unique") {
+          return { error: "Такой аккаунт уже есть — нажми «Войти»" };
+        }
+        if (fieldErrorCode(err, "email")) {
+          return { error: "Проверь адрес почты" };
+        }
+        if (fieldErrorCode(err, "password")) {
+          return { error: "Пароль слишком короткий — нужно минимум 8 символов" };
+        }
+      }
+      return { error: describeError(err) };
     }
-    // With "Confirm email" on, Supabase sends a link first and gives no session yet.
-    return data.session ? {} : { info: "Мы отправили письмо — подтверди почту по ссылке, потом вернись сюда и нажми «Войти»." };
+  }, []);
+
+  const resetPassword = useCallback(async (email: string): Promise<AuthResult> => {
+    try {
+      await pb.collection("users").requestPasswordReset(email);
+      // PocketBase answers the same whether or not the account exists.
+      return { info: "Если такой аккаунт есть, на почту придёт ссылка для смены пароля." };
+    } catch (err) {
+      return { error: describeError(err) };
+    }
   }, []);
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+    pb.authStore.clear();
     saveMeta(null);
     setLastSyncedAt(null);
     setError("");
   }, []);
 
-  return { user, status, lastSyncedAt, error, signIn, signUp, signOut, syncNow: () => void sync() };
+  const deleteAccount = useCallback(async (): Promise<AuthResult> => {
+    const current = userRef.current;
+    if (!current) {
+      return {};
+    }
+    try {
+      // The server deletes all of the account's records along with it.
+      await pb.collection("users").delete(current.id);
+      pb.authStore.clear();
+      saveMeta(null);
+      setLastSyncedAt(null);
+      setError("");
+      return {};
+    } catch (err) {
+      return { error: describeError(err) };
+    }
+  }, []);
+
+  return {
+    configured: cloudConfigured,
+    user,
+    status,
+    lastSyncedAt,
+    error,
+    signIn,
+    signUp,
+    resetPassword,
+    signOut,
+    deleteAccount,
+    syncNow: () => void sync()
+  };
 }
