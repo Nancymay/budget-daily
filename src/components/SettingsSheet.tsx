@@ -6,6 +6,7 @@ import { parseBackup } from "../lib/storage";
 import { readStatement, type Statement } from "../lib/statement";
 import type { CloudSync } from "../lib/cloud";
 import { CloudSection } from "./CloudSection";
+import { CONSENT_URL, PRIVACY_URL } from "./ui/Consent";
 import { Icon, UI_ICONS } from "./ui/Icon";
 import { Sheet } from "./ui/Sheet";
 import { useConfirm } from "./ui/ConfirmDialog";
@@ -250,6 +251,16 @@ export function SettingsSheet({
           </button>
         </div>
       </div>
+
+      <p className="legal-links">
+        <a href={PRIVACY_URL} target="_blank" rel="noopener noreferrer">
+          Политика конфиденциальности
+        </a>
+        <span aria-hidden="true"> · </span>
+        <a href={CONSENT_URL} target="_blank" rel="noopener noreferrer">
+          Согласие на обработку данных
+        </a>
+      </p>
 
       <input
         ref={inputRef}
