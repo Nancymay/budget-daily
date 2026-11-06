@@ -2305,3 +2305,51 @@ button {
   font-weight: 600;
   color: var(--muted);
 }
+
+/* Summary: charts grow in each time the tab opens */
+.result-fill {
+  animation: bar-grow 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.result-bars > div:nth-child(2) .result-fill {
+  animation-delay: 0.12s;
+}
+
+.stack {
+  animation: stack-reveal 1s cubic-bezier(0.3, 0.7, 0.2, 1) 0.2s both;
+}
+
+.legend-row {
+  animation: legend-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(0.35s + var(--i, 0) * 0.07s);
+}
+
+@keyframes bar-grow {
+  from {
+    width: 0;
+  }
+}
+
+@keyframes stack-reveal {
+  from {
+    clip-path: inset(0 100% 0 0 round 8px);
+  }
+  to {
+    clip-path: inset(0 0 0 0 round 8px);
+  }
+}
+
+@keyframes legend-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .result-fill,
+  .stack,
+  .legend-row {
+    animation: none;
+  }
+}
