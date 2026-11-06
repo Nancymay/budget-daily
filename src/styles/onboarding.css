@@ -793,3 +793,25 @@ button.ob-option {
   line-height: 1.4;
   font-weight: 700;
 }
+
+/* Consent and form errors live inside the fields card */
+.ob-consent {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 6px;
+  padding: 18px 0 14px;
+  border-top: 1px solid var(--line);
+}
+
+.ob-fields .consent {
+  flex-direction: row;
+  gap: 12px;
+  padding: 0;
+  border: 0;
+}
+
+.ob-fields .consent input {
+  width: 22px;
+  height: 22px;
+}

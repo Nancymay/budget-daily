@@ -621,23 +621,26 @@ function CloudStep({ cloud, signInFirst, onDone }: { cloud: CloudSync; signInFir
             </button>
           </span>
         </label>
+        {((isUp && !info) || error) && (
+          <div className="ob-consent">
+            {isUp && !info && (
+              <ConsentCheck
+                checked={agreed}
+                onChange={(value) => {
+                  setAgreed(value);
+                  reset();
+                }}
+              />
+            )}
+            {error && (
+              <p className="form-error" role="alert">
+                {error}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
-      {isUp && !info && (
-        <ConsentCheck
-          checked={agreed}
-          onChange={(value) => {
-            setAgreed(value);
-            reset();
-          }}
-        />
-      )}
-
-      {error && (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
-      )}
       {info ? (
         <p className="ob-info" role="status">
           {info}
