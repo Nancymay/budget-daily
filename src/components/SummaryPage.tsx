@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, type CSSProperties } from "react";
 import { getTodayISO, isDateInPeriod, type Period } from "../lib/date";
 import { dayMonthShort, num } from "../lib/format";
 import { resolveCategoryStyle } from "../lib/categoryStyle";
@@ -104,8 +104,8 @@ export function SummaryPage({ period, forecast, transactions, styles }: SummaryP
               ))}
             </div>
             <div className="legend">
-              {expenses.map((item) => (
-                <div key={item.category} className="legend-row">
+              {expenses.map((item, index) => (
+                <div key={item.category} className="legend-row" style={{ "--i": index } as CSSProperties}>
                   <span className="legend-dot" style={{ background: resolveCategoryStyle(item.category, "expense", styles).solid }} />
                   <span className="legend-name">{item.category}</span>
                   <span className="legend-pct">{Math.round((item.amount / expenseSum) * 100)}%</span>
