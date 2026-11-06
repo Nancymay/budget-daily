@@ -5,6 +5,7 @@ import { addDays, diffDays, getPeriodFor, getTodayISO } from "../lib/date";
 import { dayMonthLong, groupTypedAmount, num, plural } from "../lib/format";
 import type { PeriodMode, Settings } from "../types/models";
 import { CategoryBadge } from "./ui/CategoryBadge";
+import { CONSENT_REQUIRED, ConsentCheck } from "./ui/Consent";
 import { Icon, UI_ICONS } from "./ui/Icon";
 import "../styles/onboarding.css";
 
@@ -528,6 +529,7 @@ function CloudStep({ cloud, signInFirst, onDone }: { cloud: CloudSync; signInFir
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [agreed, setAgreed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
@@ -540,8 +542,12 @@ function CloudStep({ cloud, signInFirst, onDone }: { cloud: CloudSync; signInFir
       setError("Введите почту");
       return;
     }
-    if (password.length < 6) {
-      setError("Пароль — минимум 6 символов");
+    if (password.length < 8) {
+      setError("Пароль — минимум 8 символов");
+      return;
+    }
+    if (isUp && !agreed) {
+      setError(CONSENT_REQUIRED);
       return;
     }
     setBusy(true);
@@ -603,7 +609,7 @@ function CloudStep({ cloud, signInFirst, onDone }: { cloud: CloudSync; signInFir
             <input
               type={showPassword ? "text" : "password"}
               autoComplete={isUp ? "new-password" : "current-password"}
-              placeholder="Минимум 6 символов"
+              placeholder="Минимум 8 символов"
               value={password}
               onChange={(event) => {
                 setPassword(event.target.value);
@@ -616,6 +622,16 @@ function CloudStep({ cloud, signInFirst, onDone }: { cloud: CloudSync; signInFir
           </span>
         </label>
       </div>
+
+      {isUp && !info && (
+        <ConsentCheck
+          checked={agreed}
+          onChange={(value) => {
+            setAgreed(value);
+            reset();
+          }}
+        />
+      )}
 
       {error && (
         <p className="form-error" role="alert">

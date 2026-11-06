@@ -29,7 +29,9 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
-          cleanupOutdatedCaches: true
+          cleanupOutdatedCaches: true,
+          // Legal pages are plain HTML next to the app, not routes of it.
+          navigateFallbackDenylist: [/^\/(privacy|consent|support|legal)\//]
         }
       })
     ]

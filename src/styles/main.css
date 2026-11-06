@@ -2270,3 +2270,38 @@ button {
 .menu-row:disabled {
   opacity: 0.6;
 }
+
+/* Personal-data consent on sign-up */
+.consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.consent input {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.consent a,
+.field-hint a,
+.legal-links a {
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+
+.legal-links {
+  margin: 8px 0 0;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}

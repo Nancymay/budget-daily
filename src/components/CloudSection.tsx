@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { CloudSync } from "../lib/cloud";
 import { useConfirm } from "./ui/ConfirmDialog";
+import { CONSENT_REQUIRED, ConsentCheck, PRIVACY_URL } from "./ui/Consent";
 import { Icon } from "./ui/Icon";
 
 const CLOUD_ICON = "M7 18a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 9.5a4 4 0 0 1-.5 8.5z";
@@ -14,6 +15,7 @@ export function CloudSection({ cloud }: { cloud: CloudSync }) {
   const confirm = useConfirm();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [agreed, setAgreed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
@@ -73,7 +75,12 @@ export function CloudSection({ cloud }: { cloud: CloudSync }) {
             Выйти
           </button>
         </div>
-        <span className="field-hint">Данные остаются и на телефоне: без сети всё работает, а при связи догоняет облако.</span>
+        <span className="field-hint">
+          Данные остаются и на телефоне: без сети всё работает, а при связи догоняет облако.{" "}
+          <a href={PRIVACY_URL} target="_blank" rel="noopener noreferrer">
+            Политика конфиденциальности
+          </a>
+        </span>
         <button type="button" className="link-btn link-btn--danger cloud-delete" disabled={busy} onClick={() => void removeAccount()}>
           Удалить аккаунт
         </button>
@@ -92,6 +99,10 @@ export function CloudSection({ cloud }: { cloud: CloudSync }) {
     }
     if (password.length < MIN_PASSWORD) {
       setError(`Пароль — минимум ${MIN_PASSWORD} символов`);
+      return;
+    }
+    if (action === "signUp" && !agreed) {
+      setError(CONSENT_REQUIRED);
       return;
     }
     setBusy(true);
@@ -156,6 +167,13 @@ export function CloudSection({ cloud }: { cloud: CloudSync }) {
           }}
         />
       </span>
+      <ConsentCheck
+        checked={agreed}
+        onChange={(value) => {
+          setAgreed(value);
+          reset();
+        }}
+      />
       <div className="cloud-actions">
         <button type="submit" className="soft-btn soft-btn--accent" disabled={busy}>
           Войти
