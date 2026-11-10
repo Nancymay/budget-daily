@@ -2353,3 +2353,40 @@ button {
     animation: none;
   }
 }
+
+/* One-time cookies / Metrica notice (website only) */
+.cookie-notice {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 96px);
+  transform: translateX(-50%);
+  z-index: 1200;
+  width: min(440px, calc(100% - 24px));
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 12px 12px 16px;
+  border-radius: 20px;
+  background: var(--surface, #fff);
+  box-shadow: 0 12px 40px rgba(20, 19, 26, 0.18);
+  animation: legend-in 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.cookie-notice p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.cookie-notice a {
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+
+.cookie-notice .soft-btn {
+  flex: none;
+  width: auto;
+  padding: 0 16px;
+}
