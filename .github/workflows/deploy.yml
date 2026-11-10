@@ -36,6 +36,8 @@ jobs:
           VITE_BASE_PATH: /
           # Address of the PocketBase server: Settings → Secrets and variables → Actions → Variables
           VITE_POCKETBASE_URL: ${{ vars.POCKETBASE_URL }}
+          # Yandex Metrica counter (website only; the iOS build never includes it)
+          VITE_YM_ID: "114171158"
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

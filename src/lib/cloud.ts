@@ -2,6 +2,7 @@ import PocketBase, { ClientResponseError, type RecordModel } from "pocketbase";
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { applyOnTop, EMPTY_BASE, mergeSync, type PushRow, type RemoteRow, type SyncBase } from "./syncMerge";
 import type { AppState } from "../types/models";
+import { goal } from "./metrika";
 
 // The app's own PocketBase server (in Russia). Set at build time from the
 // POCKETBASE_URL repository variable; without it the cloud is simply off.
@@ -365,6 +366,7 @@ export function useCloudSync(state: AppState, setState: Dispatch<SetStateAction<
     try {
       await pb.collection("users").create({ email, password, passwordConfirm: password, emailVisibility: false });
       await pb.collection("users").requestVerification(email);
+      goal("sign_up");
       return { info: "Мы отправили письмо — подтверди почту по ссылке, потом вернись сюда и нажми «Войти»." };
     } catch (err) {
       if (err instanceof ClientResponseError && err.status === 400) {

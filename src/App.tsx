@@ -18,6 +18,7 @@ import { getPeriodFor, getTodayISO, shiftPeriod, type Period } from "./lib/date"
 import { periodLabel, periodLabelShort } from "./lib/format";
 import { getBaseCategories, loadState, MAX_SKIPPED, saveState } from "./lib/storage";
 import { useCloudSync } from "./lib/cloud";
+import { goal } from "./lib/metrika";
 import type { AppState, DistributionSettings, PeriodMode, Settings, Transaction, TransactionType } from "./types/models";
 
 const baseCategories = getBaseCategories();
@@ -172,6 +173,9 @@ export default function App() {
             }
       };
     });
+    if (!existingId) {
+      goal("add_operation");
+    }
     setEditingId(null);
     setTxSheetOpen(false);
   };
@@ -196,6 +200,7 @@ export default function App() {
         }
       };
     });
+    goal("statement_import");
     setStatement(null);
   };
 
